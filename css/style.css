@@ -272,6 +272,34 @@ a { color: var(--accent); text-decoration: none; }
 .login-bnav-item.active { color: rgba(255,255,255,0.85); }
 .login-bnav-item span { margin-top: 1px; }
 
+/* Biometric Prompt Overlay */
+.bio-prompt-overlay {
+  position: fixed; inset: 0; z-index: 300;
+  background: rgba(0,0,0,0.6); backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 1.5rem; opacity: 0; transition: opacity 0.3s;
+}
+.bio-prompt-overlay.show { opacity: 1; }
+.bio-prompt-card {
+  background: var(--bg-white); border-radius: var(--radius);
+  padding: 2rem 1.5rem; text-align: center;
+  max-width: 340px; width: 100%; box-shadow: var(--shadow-lg);
+}
+.bio-prompt-icon { margin-bottom: 1rem; }
+.bio-prompt-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.4rem; color: var(--text); }
+.bio-prompt-sub { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1.5rem; line-height: 1.5; }
+.bio-prompt-btns { display: flex; flex-direction: column; gap: 8px; }
+.bio-prompt-btn {
+  padding: 12px; border-radius: 12px; border: none;
+  font-family: inherit; font-size: 0.9rem; font-weight: 600;
+  cursor: pointer; transition: background 0.2s;
+  background: var(--bg); color: var(--text-secondary);
+}
+.bio-prompt-btn.primary {
+  background: var(--primary); color: #fff;
+}
+.bio-prompt-btn:active { opacity: 0.85; }
+
 /* Error / Toast */
 .error-msg { color: var(--danger); font-size: 0.85rem; margin-top: 0.75rem; text-align: center; }
 .toast {

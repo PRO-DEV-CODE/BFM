@@ -19,6 +19,88 @@ const Auth = (() => {
     }
   }
 
+  // ── Biometric (WebAuthn) ──
+  async function isBiometricAvailable() {
+    if (!window.PublicKeyCredential) return false;
+    try { return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable(); }
+    catch { return false; }
+  }
+
+  function isBiometricRegistered() {
+    return !!localStorage.getItem('bfm_bio_cred');
+  }
+
+  async function registerBiometric(pin) {
+    const userId = new Uint8Array(16);
+    crypto.getRandomValues(userId);
+    const credential = await navigator.credentials.create({
+      publicKey: {
+        challenge: crypto.getRandomValues(new Uint8Array(32)),
+        rp: { name: 'BFM', id: location.hostname },
+        user: { id: userId, name: 'bfm-user', displayName: 'BFM User' },
+        pubKeyCredParams: [
+          { alg: -7, type: 'public-key' },
+          { alg: -257, type: 'public-key' }
+        ],
+        authenticatorSelection: {
+          authenticatorAttachment: 'platform',
+          userVerification: 'required'
+        },
+        timeout: 60000
+      }
+    });
+    const credId = btoa(String.fromCharCode(...new Uint8Array(credential.rawId)));
+    localStorage.setItem('bfm_bio_cred', credId);
+    localStorage.setItem('bfm_bio_pin', btoa(pin));
+  }
+
+  async function authenticateBiometric() {
+    const credId = localStorage.getItem('bfm_bio_cred');
+    if (!credId) throw new Error('ยังไม่ได้ลงทะเบียน');
+    const rawId = Uint8Array.from(atob(credId), c => c.charCodeAt(0));
+    await navigator.credentials.get({
+      publicKey: {
+        challenge: crypto.getRandomValues(new Uint8Array(32)),
+        allowCredentials: [{ id: rawId, type: 'public-key', transports: ['internal'] }],
+        userVerification: 'required',
+        timeout: 60000
+      }
+    });
+    return atob(localStorage.getItem('bfm_bio_pin'));
+  }
+
+  function clearBiometric() {
+    localStorage.removeItem('bfm_bio_cred');
+    localStorage.removeItem('bfm_bio_pin');
+  }
+
+  function showBioPrompt(container) {
+    return new Promise(resolve => {
+      const ov = document.createElement('div');
+      ov.className = 'bio-prompt-overlay';
+      ov.innerHTML = `
+        <div class="bio-prompt-card">
+          <div class="bio-prompt-icon">
+            <svg viewBox="0 0 48 48" width="48" height="48" fill="none" stroke="var(--primary)" stroke-width="1.6" stroke-linecap="round">
+              <circle cx="24" cy="24" r="20"/>
+              <circle cx="24" cy="20" r="5" fill="var(--primary)" stroke="none"/>
+              <path d="M12 38c0-6.6 5.4-12 12-12s12 5.4 12 12"/>
+            </svg>
+          </div>
+          <h3 class="bio-prompt-title">เปิดใช้สแกนใบหน้า?</h3>
+          <p class="bio-prompt-sub">เข้าสู่ระบบครั้งถัดไปด้วย Face ID ได้ทันที</p>
+          <div class="bio-prompt-btns">
+            <button class="bio-prompt-btn primary" id="bio-yes">เปิดใช้งาน</button>
+            <button class="bio-prompt-btn" id="bio-no">ไว้ทีหลัง</button>
+          </div>
+        </div>`;
+      container.appendChild(ov);
+      requestAnimationFrame(() => ov.classList.add('show'));
+      ov.querySelector('#bio-yes').onclick = () => { ov.remove(); resolve(true); };
+      ov.querySelector('#bio-no').onclick = () => { ov.remove(); resolve(false); };
+    });
+  }
+
   function renderPinScreen(isSetup = false) {
     const keyLabels = {
       1:'', 2:'ABC', 3:'DEF', 4:'GHI', 5:'JKL', 6:'MNO',
@@ -137,7 +219,7 @@ const Auth = (() => {
       </div>`;
   }
 
-  function bindPinPad(onComplete) {
+  function bindPinPad(onComplete, onBio) {
     let pin = '';
     const dots = document.querySelectorAll('#pin-dots .login-dot');
     const errorEl = document.getElementById('pin-error');
@@ -164,7 +246,7 @@ const Auth = (() => {
           }
           return;
         }
-        if (key === 'bio') return;
+        if (key === 'bio') { if (onBio) onBio(); return; }
         if (pin.length >= 6) return;
         pin += key;
         dots[pin.length - 1]?.classList.add('filled');
@@ -207,16 +289,53 @@ const Auth = (() => {
           const res = await API.setInitialPin(pin);
           API.setSecret(res.secret);
           setAuthenticated(true);
+          if (await isBiometricAvailable()) {
+            const ok = await showBioPrompt(container);
+            if (ok) { try { await registerBiometric(pin); } catch {} }
+          }
           onSuccess();
         });
       } else {
+        const bioAvail = await isBiometricAvailable();
+        const bioReg = isBiometricRegistered();
         container.innerHTML = renderPinScreen(false);
+
+        // Wire biometric login
+        const bioCard = document.getElementById('login-bio-card');
+        const doBioLogin = async () => {
+          try {
+            if (bioCard) bioCard.querySelector('.login-bio-text').textContent = 'กำลังสแกน...';
+            const storedPin = await authenticateBiometric();
+            const res = await API.verifyPin(storedPin);
+            API.setSecret(res.secret);
+            setAuthenticated(true);
+            onSuccess();
+          } catch (e) {
+            if (bioCard) bioCard.querySelector('.login-bio-text').textContent = 'สแกนไม่สำเร็จ — ใช้ PIN แทน';
+            clearBiometric();
+            const t = document.getElementById('login-pin-toggle');
+            if (t) t.click();
+          }
+        };
+
+        if (bioCard) {
+          if (bioAvail && bioReg) {
+            bioCard.addEventListener('click', doBioLogin);
+          } else {
+            bioCard.classList.add('hidden');
+          }
+        }
+
         bindPinPad(async (pin) => {
           const res = await API.verifyPin(pin);
           API.setSecret(res.secret);
           setAuthenticated(true);
+          if (bioAvail && !isBiometricRegistered()) {
+            const ok = await showBioPrompt(container);
+            if (ok) { try { await registerBiometric(pin); } catch {} }
+          }
           onSuccess();
-        });
+        }, bioAvail && bioReg ? doBioLogin : null);
       }
     } catch (err) {
       container.innerHTML = `
