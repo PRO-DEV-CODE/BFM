@@ -167,9 +167,11 @@ const App = (() => {
             <span class="mi mi-sm" style="color:var(--text-muted);margin-left:2px">expand_more</span>
           </div>
           <div class="header-right">
-            <button class="btn-icon header-bell" id="btn-notif-bell" title="แจ้งเตือน">
-              ${mi('notifications')}
-              <span class="bell-badge hidden" id="bell-badge">0</span>
+            <button class="header-notif-btn" id="btn-notif-bell" title="แจ้งเตือน">
+              <span class="header-notif-ring">
+                ${mi('notifications')}
+              </span>
+              <span class="header-notif-badge hidden" id="bell-badge">0</span>
             </button>
           </div>
         </header>

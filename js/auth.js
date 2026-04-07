@@ -192,7 +192,7 @@ const Auth = (() => {
         </div>
 
         ${!isSetup ? `
-        <button class="login-forgot-link">ลืมรหัสผ่านหรือมีปัญหาในการเข้าใช้งาน?</button>
+        <button class="login-forgot-link" id="login-forgot-btn">ลืมรหัสผ่านหรือมีปัญหาในการเข้าใช้งาน?</button>
 
         <!-- Bottom actions -->
         <div class="login-bottom-row">
@@ -203,20 +203,90 @@ const Auth = (() => {
 
         <!-- Bottom Nav -->
         <div class="login-bottom-nav">
-          <div class="login-bnav-item active">
+          <div class="login-bnav-item" id="bnav-secure">
             <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
             <span>SECURE</span>
           </div>
-          <div class="login-bnav-item">
+          <div class="login-bnav-item" id="bnav-entry">
             <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
             <span>ENTRY</span>
           </div>
-          <div class="login-bnav-item">
+          <div class="login-bnav-item" id="bnav-help">
             <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"/></svg>
             <span>HELP</span>
           </div>
         </div>
+
+        <!-- Help Modal -->
+        <div id="login-help-modal" class="login-help-overlay hidden">
+          <div class="login-help-card">
+            <h3 class="login-help-title">ช่วยเหลือ</h3>
+            <div class="login-help-item">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="var(--primary)"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+              <div><strong>ลืม PIN</strong><p>ลบแคชเบราว์เซอร์แล้วตั้ง PIN ใหม่</p></div>
+            </div>
+            <div class="login-help-item">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="var(--primary)"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
+              <div><strong>Face ID ใช้ไม่ได้</strong><p>กดปุ่ม "เข้าสู่ระบบด้วยรหัส PIN" แทน</p></div>
+            </div>
+            <div class="login-help-item">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="var(--primary)"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
+              <div><strong>เชื่อมต่อไม่ได้</strong><p>ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่</p></div>
+            </div>
+            <button class="login-help-close" id="login-help-close">ปิด</button>
+          </div>
+        </div>
       </div>`;
+  }
+
+  function bindLoginNav(onBio) {
+    // Bottom nav: SECURE = show PIN pad
+    const secureBtn = document.getElementById('bnav-secure');
+    if (secureBtn) {
+      secureBtn.addEventListener('click', () => {
+        document.querySelectorAll('.login-bnav-item').forEach(i => i.classList.remove('active'));
+        secureBtn.classList.add('active');
+        const t = document.getElementById('login-pin-toggle');
+        if (t) t.click();
+      });
+    }
+    // Bottom nav: ENTRY = biometric
+    const entryBtn = document.getElementById('bnav-entry');
+    if (entryBtn) {
+      entryBtn.addEventListener('click', () => {
+        document.querySelectorAll('.login-bnav-item').forEach(i => i.classList.remove('active'));
+        entryBtn.classList.add('active');
+        const bioCard = document.getElementById('login-bio-card');
+        if (bioCard && !bioCard.classList.contains('hidden')) {
+          bioCard.click();
+        } else if (onBio) {
+          onBio();
+        } else {
+          // No biometric, fallback to PIN
+          const t = document.getElementById('login-pin-toggle');
+          if (t) t.click();
+        }
+      });
+    }
+    // Bottom nav: HELP = show help modal
+    const helpBtn = document.getElementById('bnav-help');
+    const helpModal = document.getElementById('login-help-modal');
+    if (helpBtn && helpModal) {
+      helpBtn.addEventListener('click', () => {
+        document.querySelectorAll('.login-bnav-item').forEach(i => i.classList.remove('active'));
+        helpBtn.classList.add('active');
+        helpModal.classList.remove('hidden');
+      });
+      document.getElementById('login-help-close')?.addEventListener('click', () => {
+        helpModal.classList.add('hidden');
+      });
+      helpModal.addEventListener('click', (e) => { if (e.target === helpModal) helpModal.classList.add('hidden'); });
+    }
+    // Forgot link
+    const forgotBtn = document.getElementById('login-forgot-btn');
+    if (forgotBtn && helpModal) {
+      forgotBtn.addEventListener('click', () => helpModal.classList.remove('hidden'));
+    }
   }
 
   function bindPinPad(onComplete, onBio) {
@@ -295,6 +365,7 @@ const Auth = (() => {
           }
           onSuccess();
         });
+        bindLoginNav();
       } else {
         const bioAvail = await isBiometricAvailable();
         const bioReg = isBiometricRegistered();
@@ -336,6 +407,7 @@ const Auth = (() => {
           }
           onSuccess();
         }, bioAvail && bioReg ? doBioLogin : null);
+        bindLoginNav(bioAvail && bioReg ? doBioLogin : null);
       }
     } catch (err) {
       container.innerHTML = `
