@@ -108,15 +108,20 @@ const App = (() => {
   async function loadMembers() {
     try {
       membersCache = await API.getMembers() || [];
-      // Restore last selected member
-      const saved = localStorage.getItem('bfm_current_member');
-      if (saved) {
-        currentMember = membersCache.find(m => m.id === saved) || membersCache[0] || null;
-      } else {
-        currentMember = membersCache[0] || null;
-      }
-      updateHeaderMember();
-    } catch { membersCache = []; }
+      // Sync to localStorage as backup
+      localStorage.setItem('bfm_members', JSON.stringify(membersCache));
+    } catch {
+      // Fallback to localStorage when API doesn't support members yet
+      try { membersCache = JSON.parse(localStorage.getItem('bfm_members') || '[]'); } catch { membersCache = []; }
+    }
+    // Restore last selected member
+    const saved = localStorage.getItem('bfm_current_member');
+    if (saved) {
+      currentMember = membersCache.find(m => m.id === saved) || membersCache[0] || null;
+    } else {
+      currentMember = membersCache[0] || null;
+    }
+    updateHeaderMember();
   }
 
   function setCurrentMember(member) {
@@ -156,7 +161,7 @@ const App = (() => {
           <div class="header-left" id="header-member-switch">
             <div class="header-avatar" id="header-avatar">${mi('person')}</div>
             <div class="header-member-info">
-              <span class="header-title">BFM</span>
+              <span class="header-title">THE PRIVATE BANK</span>
               <span class="header-member-name" id="header-member-name">ครอบครัว</span>
             </div>
             <span class="mi mi-sm" style="color:var(--text-muted);margin-left:2px">expand_more</span>
@@ -1018,7 +1023,13 @@ const App = (() => {
   async function renderMembers(el) {
     showLoading(el);
     try {
-      const members = await API.getMembers() || [];
+      let members;
+      try {
+        members = await API.getMembers() || [];
+        localStorage.setItem('bfm_members', JSON.stringify(members));
+      } catch {
+        try { members = JSON.parse(localStorage.getItem('bfm_members') || '[]'); } catch { members = []; }
+      }
       membersCache = members;
 
       el.innerHTML = `
@@ -1123,7 +1134,11 @@ const App = (() => {
         btn.addEventListener('click', async () => {
           if (!confirm('ลบสมาชิกนี้?')) return;
           try {
-            await API.deleteMember(btn.dataset.mid);
+            try { await API.deleteMember(btn.dataset.mid); } catch {
+              // Fallback: remove from localStorage
+              membersCache = membersCache.filter(m => m.id !== btn.dataset.mid);
+              localStorage.setItem('bfm_members', JSON.stringify(membersCache));
+            }
             showToast('ลบสำเร็จ');
             if (currentMember && currentMember.id === btn.dataset.mid) setCurrentMember(null);
             renderMembers(el);
@@ -1143,10 +1158,23 @@ const App = (() => {
         btn.disabled = true; btn.textContent = 'กำลังบันทึก...';
         try {
           if (id) {
-            await API.updateMember({ id, name, avatarColor, role });
+            try { await API.updateMember({ id, name, avatarColor, role }); } catch {
+              // Fallback: update in localStorage
+              const idx = membersCache.findIndex(m => m.id === id);
+              if (idx >= 0) Object.assign(membersCache[idx], { name, avatarColor, role });
+              localStorage.setItem('bfm_members', JSON.stringify(membersCache));
+            }
             showToast('แก้ไขสำเร็จ');
           } else {
-            await API.addMember({ name, avatarColor, role });
+            try {
+              const res = await API.addMember({ name, avatarColor, role });
+              membersCache.push({ id: res.id, name, avatarColor, role });
+            } catch {
+              // Fallback: add to localStorage
+              const newMember = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name, avatarColor, role };
+              membersCache.push(newMember);
+            }
+            localStorage.setItem('bfm_members', JSON.stringify(membersCache));
             showToast('เพิ่มสมาชิกสำเร็จ');
           }
           document.getElementById('member-form-modal').classList.add('hidden');

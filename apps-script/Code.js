@@ -127,7 +127,7 @@ function handleRequest(e) {
 
     // No action = health check (no auth needed)
     if (!action) {
-      return jsonOk({ status: 'BFM API is running', version: '1.0' });
+      return jsonOk({ status: 'THE PRIVATE BANK API is running', version: '1.0' });
     }
 
     // API secret check (skip for open actions)
@@ -640,7 +640,7 @@ function checkReminders() {
   }
 
   if (notifications.length > 0) {
-    var fullMsg = '\n📋 BFM แจ้งเตือน' + notifications.join('\n─────────');
+    var fullMsg = '\n📋 THE PRIVATE BANK แจ้งเตือน' + notifications.join('\n─────────');
     sendLineNotify(fullMsg);
   }
 }

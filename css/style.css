@@ -331,7 +331,7 @@ a { color: var(--accent); text-decoration: none; }
   font-size: 1.2rem; color: #fff; font-weight: 600;
 }
 .header-member-info { display: flex; flex-direction: column; line-height: 1.2; }
-.header-title { font-size: 1.05rem; font-weight: 700; color: var(--primary); }
+.header-title { font-size: 0.82rem; font-weight: 700; color: var(--primary); letter-spacing: 0.03em; white-space: nowrap; }
 .header-member-name { font-size: 0.65rem; color: var(--text-muted); letter-spacing: 0.02em; }
 .header-right { display: flex; align-items: center; gap: 8px; }
 

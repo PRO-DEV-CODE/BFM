@@ -1,6 +1,6 @@
 {
-  "name": "BFM - จัดการรายรับรายจ่าย",
-  "short_name": "BFM",
+  "name": "THE PRIVATE BANK - จัดการรายรับรายจ่าย",
+  "short_name": "TPB",
   "description": "ระบบจัดการรายรับรายจ่ายส่วนตัว พร้อมแจ้งเตือนการชำระ",
   "start_url": ".",
   "scope": ".",

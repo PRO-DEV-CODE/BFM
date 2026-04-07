@@ -36,8 +36,8 @@ const Auth = (() => {
     const credential = await navigator.credentials.create({
       publicKey: {
         challenge: crypto.getRandomValues(new Uint8Array(32)),
-        rp: { name: 'BFM', id: location.hostname },
-        user: { id: userId, name: 'bfm-user', displayName: 'BFM User' },
+        rp: { name: 'THE PRIVATE BANK', id: location.hostname },
+        user: { id: userId, name: 'tpb-user', displayName: 'THE PRIVATE BANK User' },
         pubKeyCredParams: [
           { alg: -7, type: 'public-key' },
           { alg: -257, type: 'public-key' }
@@ -341,7 +341,7 @@ const Auth = (() => {
       container.innerHTML = `
         <div class="login-screen">
           <div class="login-top-bar">
-            <div class="login-brand"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg><span class="login-brand-name">BFM</span></div>
+            <div class="login-brand"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg><span class="login-brand-name">THE PRIVATE BANK</span></div>
           </div>
           <div class="login-fp-icon" style="margin-top:3rem">
             <svg viewBox="0 0 24 24" width="52" height="52" fill="none" stroke="rgba(255,200,200,0.7)" stroke-width="2">
