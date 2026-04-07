@@ -531,7 +531,7 @@ textarea.input-field { resize: vertical; }
 .category-mini-card .cat-name { font-size: 0.85rem; margin-bottom: 6px; }
 .cat-mini-progress { height: 4px; background: var(--bg-input); border-radius: 2px; overflow: hidden; }
 
-/* ── Transaction List ── */
+/* ── Transaction List (shared) ── */
 .transaction-list { display: flex; flex-direction: column; gap: 8px; }
 .transaction-item {
   display: flex; align-items: center;
@@ -554,7 +554,125 @@ textarea.input-field { resize: vertical; }
 .txn-amount.expense { color: var(--expense); }
 .txn-actions { display: flex; gap: 4px; margin-left: 4px; }
 
-/* ── Month Picker ── */
+/* ── History Page (Banking Style) ── */
+.hist-page { max-width: 500px; margin: 0 auto; }
+
+.hist-search-bar {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 16px;
+}
+.hist-search-input-wrap {
+  flex: 1; display: flex; align-items: center; gap: 8px;
+  background: var(--bg-input); border-radius: 28px;
+  padding: 10px 16px; border: 1.5px solid transparent;
+  transition: border-color 0.2s;
+}
+.hist-search-input-wrap:focus-within { border-color: var(--primary); background: var(--bg-white); }
+.hist-search-input-wrap .mi { color: var(--text-muted); font-size: 20px; }
+.hist-search-input {
+  flex: 1; border: none; background: transparent; outline: none;
+  font-family: inherit; font-size: 0.88rem; color: var(--text);
+}
+.hist-search-input::placeholder { color: var(--text-muted); }
+.hist-filter-btn {
+  width: 44px; height: 44px; border-radius: 14px;
+  background: var(--bg-input); border: 1.5px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-secondary); cursor: pointer; transition: all 0.2s;
+  flex-shrink: 0;
+}
+.hist-filter-btn:active { background: var(--border); }
+
+.hist-balance-card {
+  background: var(--bg-white); border-radius: var(--radius);
+  padding: 20px; box-shadow: var(--shadow); margin-bottom: 20px;
+}
+.hist-balance-top {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;
+}
+.hist-balance-label { font-size: 0.82rem; color: var(--text-secondary); }
+.hist-badge {
+  display: inline-flex; align-items: center; gap: 3px;
+  background: #dcfce7; color: var(--income);
+  font-size: 0.72rem; font-weight: 600;
+  padding: 3px 10px; border-radius: 20px;
+}
+.hist-balance-amount {
+  font-size: 2rem; font-weight: 700; color: var(--text);
+  letter-spacing: -0.02em; margin-bottom: 12px;
+}
+.hist-month-nav {
+  display: flex; justify-content: center; gap: 8px; margin-bottom: 16px;
+}
+.hist-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--border); border: none; cursor: pointer;
+  transition: all 0.2s; padding: 0;
+}
+.hist-dot.active { background: var(--primary); width: 24px; border-radius: 5px; }
+.hist-month-hidden {
+  position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none;
+}
+
+.hist-summary-row { display: flex; gap: 10px; }
+.hist-summary-card {
+  flex: 1; display: flex; align-items: center; gap: 10px;
+  padding: 14px; border-radius: var(--radius-sm);
+}
+.hist-summary-card.expense { background: #1a3a6b; color: #fff; }
+.hist-summary-card.income { background: #166534; color: #fff; }
+.hist-summary-icon {
+  width: 36px; height: 36px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem; flex-shrink: 0;
+}
+.hist-summary-icon.expense { background: rgba(255,255,255,0.15); }
+.hist-summary-icon.income { background: rgba(255,255,255,0.15); }
+.hist-summary-label { font-size: 0.7rem; opacity: 0.8; white-space: nowrap; }
+.hist-summary-value { font-size: 1.05rem; font-weight: 700; margin-top: 1px; }
+.hist-summary-value.expense, .hist-summary-value.income { color: #fff; }
+
+.hist-date-group { margin-bottom: 16px; }
+.hist-date-label {
+  font-size: 0.8rem; font-weight: 600; color: var(--text-secondary);
+  margin-bottom: 8px; padding-left: 4px;
+}
+.hist-txn-row {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--bg-white); border-radius: var(--radius-sm);
+  padding: 14px 16px; margin-bottom: 8px;
+  box-shadow: var(--shadow); position: relative;
+  overflow: hidden; transition: transform 0.2s;
+  cursor: pointer;
+}
+.hist-txn-icon {
+  width: 44px; height: 44px; border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.15rem; flex-shrink: 0;
+}
+.hist-txn-info { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.hist-txn-name {
+  font-size: 0.9rem; font-weight: 600; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.hist-txn-meta { font-size: 0.73rem; color: var(--text-muted); }
+.hist-txn-amount {
+  font-size: 0.95rem; font-weight: 700; flex-shrink: 0; white-space: nowrap;
+}
+.hist-txn-amount.income { color: var(--income); }
+.hist-txn-amount.expense { color: var(--expense); }
+
+.hist-row-actions {
+  position: absolute; right: 0; top: 0; bottom: 0;
+  display: flex; align-items: stretch;
+}
+.hist-act-btn {
+  width: 60px; display: flex; align-items: center; justify-content: center;
+  border: none; cursor: pointer; color: #fff; font-family: inherit;
+}
+.hist-act-btn.edit { background: var(--accent); }
+.hist-act-btn.delete { background: var(--danger); }
+
+/* ── Month Picker (kept for summary page) ── */
 .month-picker { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 16px; }
 .txn-month-summary {
   display: flex; justify-content: space-around;

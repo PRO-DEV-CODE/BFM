@@ -453,76 +453,185 @@ const App = (() => {
   async function renderHistory(el) {
     const month = getCurrentMonth();
     el.innerHTML = `
-      <div class="month-picker">
-        <button class="btn-icon" id="month-prev">${mi('chevron_left')}</button>
-        <input type="month" id="month-select" value="${month}" class="input-field input-month">
-        <button class="btn-icon" id="month-next">${mi('chevron_right')}</button>
-      </div>
-      <div id="txn-list-container"></div>`;
+      <div class="hist-page">
+        <div class="hist-search-bar">
+          <div class="hist-search-input-wrap">
+            ${mi('search', 'mi-sm')}
+            <input type="text" id="hist-search" class="hist-search-input" placeholder="ค้นหารายการ...">
+          </div>
+          <button class="hist-filter-btn" id="hist-filter-btn">${mi('tune')}</button>
+        </div>
+
+        <div class="hist-balance-card">
+          <div class="hist-balance-top">
+            <span class="hist-balance-label">ค่าใช้จ่ายเดือนนี้</span>
+            <span class="hist-badge" id="hist-pct-badge"></span>
+          </div>
+          <div class="hist-balance-amount" id="hist-total-expense">฿0</div>
+          <div class="hist-month-nav">
+            <button class="hist-dot active" id="hist-dot-prev"></button>
+            <button class="hist-dot" id="hist-dot-next"></button>
+          </div>
+          <input type="month" id="month-select" value="${month}" class="hist-month-hidden">
+          <div class="hist-summary-row">
+            <div class="hist-summary-card expense">
+              <div class="hist-summary-icon expense">${mi('south_west')}</div>
+              <div>
+                <div class="hist-summary-label">รายจ่ายเดือนนี้</div>
+                <div class="hist-summary-value expense" id="hist-exp-val">฿0</div>
+              </div>
+            </div>
+            <div class="hist-summary-card income">
+              <div class="hist-summary-icon income">${mi('north_east')}</div>
+              <div>
+                <div class="hist-summary-label">รับเข้า</div>
+                <div class="hist-summary-value income" id="hist-inc-val">฿0</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="txn-list-container"></div>
+      </div>`;
 
     const monthInput = document.getElementById('month-select');
     const container = document.getElementById('txn-list-container');
+    let allTxns = [];
+
+    function groupByDate(txns) {
+      const today = getToday();
+      const yesterday = (() => { const d = new Date(); d.setDate(d.getDate() - 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })();
+      const groups = {};
+      txns.forEach(t => {
+        let label;
+        if (t.date === today) label = 'วันนี้';
+        else if (t.date === yesterday) label = 'เมื่อวานนี้';
+        else label = formatDate(t.date);
+        if (!groups[label]) groups[label] = [];
+        groups[label].push(t);
+      });
+      return groups;
+    }
+
+    function renderTxnList(txns) {
+      if (!txns || !txns.length) { container.innerHTML = '<p class="no-data">ไม่มีรายการในเดือนนี้</p>'; return; }
+      const totalInc = txns.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+      const totalExp = txns.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+      const total = totalInc + totalExp;
+      const pct = total > 0 ? Math.round((totalExp / total) * 100) : 0;
+
+      document.getElementById('hist-total-expense').textContent = '฿' + formatMoney(totalExp);
+      document.getElementById('hist-exp-val').textContent = '฿' + formatMoney(totalExp);
+      document.getElementById('hist-inc-val').textContent = '฿' + formatMoney(totalInc);
+      document.getElementById('hist-pct-badge').innerHTML = `${mi('trending_down', 'mi-sm')} ${pct}%`;
+
+      const groups = groupByDate(txns);
+      let html = '';
+      for (const [label, items] of Object.entries(groups)) {
+        html += `<div class="hist-date-group">
+          <div class="hist-date-label">${label}</div>
+          ${items.map(t => `
+            <div class="hist-txn-row" data-id="${t.id}">
+              <div class="hist-txn-icon" style="background:${getCatColor(t.category)}15;color:${getCatColor(t.category)}">
+                ${getCatIcon(t.category)}
+              </div>
+              <div class="hist-txn-info">
+                <span class="hist-txn-name">${t.description || t.category}</span>
+                <span class="hist-txn-meta">${t.category} · ${formatDate(t.date)}</span>
+              </div>
+              <div class="hist-txn-amount ${t.type}">${t.type === 'income' ? '+' : '-'}฿${formatMoney(t.amount)}</div>
+            </div>
+          `).join('')}
+        </div>`;
+      }
+      container.innerHTML = html;
+
+      // Swipe-to-action on each row
+      container.querySelectorAll('.hist-txn-row').forEach(row => {
+        let startX = 0, currentX = 0, swiping = false;
+        row.addEventListener('touchstart', e => { startX = e.touches[0].clientX; swiping = true; }, { passive: true });
+        row.addEventListener('touchmove', e => {
+          if (!swiping) return;
+          currentX = e.touches[0].clientX - startX;
+          if (currentX < -30) row.style.transform = `translateX(${Math.max(currentX, -120)}px)`;
+        }, { passive: true });
+        row.addEventListener('touchend', () => {
+          swiping = false;
+          if (currentX < -80) {
+            row.style.transform = 'translateX(-120px)';
+            showRowActions(row);
+          } else { row.style.transform = ''; hideRowActions(row); }
+          currentX = 0;
+        });
+        row.addEventListener('click', () => {
+          if (Math.abs(currentX) < 10) {
+            const txn = allTxns.find(t => t.id === row.dataset.id);
+            if (txn) renderAddTransaction(document.getElementById('main-content'), txn);
+          }
+        });
+      });
+    }
+
+    function showRowActions(row) {
+      if (row.querySelector('.hist-row-actions')) return;
+      const actions = document.createElement('div');
+      actions.className = 'hist-row-actions';
+      actions.innerHTML = `
+        <button class="hist-act-btn edit">${mi('edit', 'mi-sm')}</button>
+        <button class="hist-act-btn delete">${mi('delete', 'mi-sm')}</button>`;
+      row.appendChild(actions);
+      actions.querySelector('.edit').addEventListener('click', (e) => {
+        e.stopPropagation();
+        const txn = allTxns.find(t => t.id === row.dataset.id);
+        if (txn) renderAddTransaction(document.getElementById('main-content'), txn);
+      });
+      actions.querySelector('.delete').addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (!confirm('ลบรายการนี้?')) return;
+        try { await API.deleteTransaction(row.dataset.id); showToast('ลบสำเร็จ'); loadTransactions(); }
+        catch (err) { showToast(err.message, 'error'); }
+      });
+    }
+
+    function hideRowActions(row) {
+      const actions = row.querySelector('.hist-row-actions');
+      if (actions) actions.remove();
+    }
 
     async function loadTransactions() {
       showLoading(container);
       try {
-        const txns = await API.getTransactions(monthInput.value);
-        if (!txns || !txns.length) { container.innerHTML = '<p class="no-data">ไม่มีรายการในเดือนนี้</p>'; return; }
-        const totalInc = txns.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-        const totalExp = txns.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
-
-        container.innerHTML = `
-          <div class="txn-month-summary">
-            <span class="income">+฿${formatMoney(totalInc)}</span>
-            <span class="expense">-฿${formatMoney(totalExp)}</span>
-            <span class="${totalInc - totalExp >= 0 ? 'positive' : 'negative'}">${formatMoney(totalInc - totalExp)}</span>
-          </div>
-          <div class="transaction-list">
-            ${txns.map(t => `
-              <div class="transaction-item" data-id="${t.id}">
-                <div class="txn-icon ${t.type}">${getCatIcon(t.category)}</div>
-                <div class="txn-left">
-                  <span class="txn-name">${t.description || t.category}</span>
-                  <span class="txn-meta">${t.category} • ${formatDate(t.date)}</span>
-                </div>
-                <div class="txn-right">
-                  <span class="txn-amount ${t.type}">${t.type === 'income' ? '+' : '-'}฿${formatMoney(t.amount)}</span>
-                </div>
-                <div class="txn-actions">
-                  <button class="btn-sm btn-edit" data-id="${t.id}">${mi('edit', 'mi-sm')}</button>
-                  <button class="btn-sm btn-delete" data-id="${t.id}">${mi('delete', 'mi-sm')}</button>
-                </div>
-              </div>
-            `).join('')}
-          </div>`;
-
-        container.querySelectorAll('.btn-edit').forEach(btn => {
-          btn.addEventListener('click', () => {
-            const txn = txns.find(t => t.id === btn.dataset.id);
-            if (txn) renderAddTransaction(document.getElementById('main-content'), txn);
-          });
-        });
-        container.querySelectorAll('.btn-delete').forEach(btn => {
-          btn.addEventListener('click', async () => {
-            if (!confirm('ลบรายการนี้?')) return;
-            try { await API.deleteTransaction(btn.dataset.id); showToast('ลบสำเร็จ'); loadTransactions(); }
-            catch (err) { showToast(err.message, 'error'); }
-          });
-        });
+        allTxns = await API.getTransactions(monthInput.value) || [];
+        renderTxnList(allTxns);
       } catch (err) { container.innerHTML = `<div class="error-page"><p>${mi('error')} ${err.message}</p></div>`; }
     }
 
-    monthInput.addEventListener('change', loadTransactions);
-    document.getElementById('month-prev').addEventListener('click', () => {
+    // Search
+    document.getElementById('hist-search').addEventListener('input', (e) => {
+      const q = e.target.value.trim().toLowerCase();
+      if (!q) { renderTxnList(allTxns); return; }
+      const filtered = allTxns.filter(t =>
+        (t.description || '').toLowerCase().includes(q) ||
+        t.category.toLowerCase().includes(q)
+      );
+      renderTxnList(filtered);
+    });
+
+    // Filter button - toggle month picker
+    document.getElementById('hist-filter-btn').addEventListener('click', () => monthInput.showPicker?.() || monthInput.focus());
+
+    // Month navigation via dots
+    document.getElementById('hist-dot-prev').addEventListener('click', () => {
       const d = new Date(monthInput.value + '-01'); d.setMonth(d.getMonth() - 1);
       monthInput.value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
       loadTransactions();
     });
-    document.getElementById('month-next').addEventListener('click', () => {
+    document.getElementById('hist-dot-next').addEventListener('click', () => {
       const d = new Date(monthInput.value + '-01'); d.setMonth(d.getMonth() + 1);
       monthInput.value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
       loadTransactions();
     });
+    monthInput.addEventListener('change', loadTransactions);
     loadTransactions();
   }
 
