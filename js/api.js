@@ -3,8 +3,8 @@
 // ====================================================
 
 const API = (() => {
-  // ⚠️ ใส่ URL ของ Apps Script Web App ที่ deploy แล้วที่นี่
-  let BASE_URL = localStorage.getItem('bfm_api_url') || '';
+  const DEFAULT_URL = 'https://script.google.com/macros/s/AKfycbzCaRpG0myGUhNkCYR6yBB1_rZSVL4u3DRjM45_njPTWnr9_Mj7f0yq4Dzi4NOlm4jtqA/exec';
+  let BASE_URL = localStorage.getItem('bfm_api_url') || DEFAULT_URL;
   let SECRET = sessionStorage.getItem('bfm_secret') || '';
 
   function setBaseUrl(url) {

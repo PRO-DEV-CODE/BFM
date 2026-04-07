@@ -102,37 +102,8 @@ const Auth = (() => {
   }
 
   async function startAuthFlow(container, onSuccess) {
-    // Step 1: Check if API URL is configured
-    if (!API.isConfigured()) {
-      container.innerHTML = renderSetupUrl();
-      const btnSave = document.getElementById('btn-save-url');
-      const urlInput = document.getElementById('api-url-input');
-      const urlError = document.getElementById('url-error');
-
-      btnSave.addEventListener('click', async () => {
-        const url = urlInput.value.trim();
-        if (!url) {
-          urlError.textContent = 'กรุณาใส่ URL';
-          urlError.classList.remove('hidden');
-          return;
-        }
-        btnSave.disabled = true;
-        btnSave.textContent = 'กำลังตรวจสอบ...';
-        try {
-          API.setBaseUrl(url);
-          await API.ping();
-          // Init sheets if needed
-          await API.init();
-          startAuthFlow(container, onSuccess); // Re-run
-        } catch (err) {
-          urlError.textContent = 'ไม่สามารถเชื่อมต่อได้: ' + err.message;
-          urlError.classList.remove('hidden');
-          btnSave.disabled = false;
-          btnSave.textContent = 'บันทึก';
-        }
-      });
-      return;
-    }
+    // Init sheets on first load
+    try { await API.init(); } catch(e) { /* ignore */ }
 
     // Step 2: Check if already authenticated this session
     if (isAuthenticated() && API.getSecret()) {
