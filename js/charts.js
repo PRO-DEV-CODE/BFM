@@ -65,6 +65,77 @@ const Charts = (() => {
       </div>`;
   }
 
+  function donutChart(container, data, options = {}) {
+    if (!data || !data.length) {
+      container.innerHTML = '<p class="no-data">ไม่มีข้อมูล</p>';
+      return;
+    }
+
+    const size = options.size || 200;
+    const strokeWidth = options.strokeWidth || 28;
+    const centerLabel = options.centerLabel || '';
+    const centerSub = options.centerSub || '';
+    const total = data.reduce((s, d) => s + d.amount, 0);
+    if (total === 0) {
+      container.innerHTML = '<p class="no-data">ไม่มีข้อมูล</p>';
+      return;
+    }
+
+    const cx = size / 2, cy = size / 2;
+    const r = (size / 2) - (strokeWidth / 2) - 4;
+    const circumference = 2 * Math.PI * r;
+
+    let cumulative = 0;
+    const slices = data.map((d, i) => {
+      const pct = d.amount / total;
+      const dashLen = pct * circumference;
+      const dashOffset = -(cumulative / total) * circumference;
+      cumulative += d.amount;
+      return {
+        ...d,
+        pct,
+        percent: (pct * 100).toFixed(1),
+        color: COLORS[i % COLORS.length],
+        dashLen,
+        dashOffset
+      };
+    });
+
+    let circles = '';
+    slices.forEach(s => {
+      circles += `<circle cx="${cx}" cy="${cy}" r="${r}"
+        fill="none" stroke="${s.color}" stroke-width="${strokeWidth}"
+        stroke-dasharray="${s.dashLen} ${circumference - s.dashLen}"
+        stroke-dashoffset="${s.dashOffset}"
+        stroke-linecap="butt"
+        transform="rotate(-90 ${cx} ${cy})"/>`;
+    });
+
+    const svg = `<svg viewBox="0 0 ${size} ${size}" class="donut-chart">
+      <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="rgba(0,0,0,0.05)" stroke-width="${strokeWidth}"/>
+      ${circles}
+      ${centerLabel ? `<text x="${cx}" y="${cy}" text-anchor="middle" dy="-0.1em"
+        style="font-size:${size * 0.11}px;font-weight:700;fill:var(--text)">${centerLabel}</text>` : ''}
+      ${centerSub ? `<text x="${cx}" y="${cy}" text-anchor="middle" dy="1.3em"
+        style="font-size:${size * 0.055}px;font-weight:500;fill:var(--text-secondary);letter-spacing:0.05em">${centerSub}</text>` : ''}
+    </svg>`;
+
+    const legend = slices.map(s =>
+      `<div class="donut-legend-item">
+        <span class="donut-legend-dot" style="background:${s.color}"></span>
+        <span class="donut-legend-label">${s.category}</span>
+        <span class="donut-legend-pct">${s.percent}%</span>
+        <span class="donut-legend-val">${formatMoney(s.amount)}</span>
+      </div>`
+    ).join('');
+
+    container.innerHTML = `
+      <div class="donut-wrapper">
+        <div class="donut-svg">${svg}</div>
+        <div class="donut-legend">${legend}</div>
+      </div>`;
+  }
+
   function barChart(container, data, options = {}) {
     if (!data || !data.length) {
       container.innerHTML = '<p class="no-data">ไม่มีข้อมูล</p>';
@@ -113,5 +184,5 @@ const Charts = (() => {
     return Number(n || 0).toLocaleString('th-TH');
   }
 
-  return { pieChart, barChart };
+  return { pieChart, donutChart, barChart };
 })();

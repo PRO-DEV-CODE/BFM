@@ -831,7 +831,7 @@ const App = (() => {
   async function renderSummary(el) {
     const month = getCurrentMonth();
     const year = new Date().getFullYear().toString();
-    el.innerHTML = `<div>
+    el.innerHTML = `<div class="sum-page">
       <div class="month-picker">
         <button class="btn-icon" id="sum-month-prev">${mi('chevron_left')}</button>
         <input type="month" id="sum-month-select" value="${month}" class="input-field input-month">
@@ -848,16 +848,40 @@ const App = (() => {
       showLoading(content);
       try {
         const data = await API.getMonthlySummary(monthInput.value);
+        const balance = data.balance || 0;
+        const balClass = balance >= 0 ? 'positive' : 'negative';
         content.innerHTML = `
-          <div class="summary-cards">
-            <div class="card card-income"><div class="card-label">รายรับ</div><div class="card-value">+${formatMoney(data.totalIncome)}</div></div>
-            <div class="card card-expense"><div class="card-label">รายจ่าย</div><div class="card-value">-${formatMoney(data.totalExpense)}</div></div>
-            <div class="card card-balance ${data.balance >= 0 ? 'positive' : 'negative'}"><div class="card-label">คงเหลือ</div><div class="card-value">${data.balance >= 0 ? '+' : ''}${formatMoney(data.balance)}</div></div>
+          <div class="sum-balance-card ${balClass}">
+            <div class="sum-bal-label">ยอมคงเหลือ</div>
+            <div class="sum-bal-value">${balance >= 0 ? '+' : ''}${formatMoney(balance)}</div>
+            <div class="sum-bal-row">
+              <div class="sum-bal-item income">
+                <span class="sum-bal-dot"></span>
+                <span class="sum-bal-item-label">รายรับ</span>
+                <span class="sum-bal-item-val">+${formatMoney(data.totalIncome)}</span>
+              </div>
+              <div class="sum-bal-item expense">
+                <span class="sum-bal-dot"></span>
+                <span class="sum-bal-item-label">รายจ่าย</span>
+                <span class="sum-bal-item-val">-${formatMoney(data.totalExpense)}</span>
+              </div>
+            </div>
           </div>
-          ${data.topCategory ? `<p class="top-cat">${mi('trending_down', 'mi-sm')} จ่ายมากสุด: <strong>${data.topCategory}</strong></p>` : ''}
-          <div class="section-header"><span class="section-title">${mi('pie_chart', 'mi-sm')} รายจ่ายตามหมวดหมู่</span></div>
-          <div id="category-pie"></div>`;
-        Charts.pieChart(document.getElementById('category-pie'), data.categoryBreakdown);
+          <div class="sum-breakdown-card">
+            <div class="sum-breakdown-header">
+              <div>
+                <div class="sum-breakdown-title">Content Breakdown</div>
+                <div class="sum-breakdown-sub">สัดส่วนรายจ่ายตามหมวด</div>
+              </div>
+            </div>
+            <div id="category-donut"></div>
+          </div>`;
+        const totalExp = data.totalExpense || 0;
+        Charts.donutChart(document.getElementById('category-donut'), data.categoryBreakdown, {
+          size: 200,
+          centerLabel: '100%',
+          centerSub: 'TOTAL EXPENSE'
+        });
       } catch (err) { content.innerHTML = `<div class="error-page"><p>${mi('error')} ${err.message}</p></div>`; }
     }
     async function loadYearly() {
