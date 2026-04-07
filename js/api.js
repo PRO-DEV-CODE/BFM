@@ -7,6 +7,24 @@ const API = (() => {
   let BASE_URL = localStorage.getItem('bfm_api_url') || DEFAULT_URL;
   let SECRET = sessionStorage.getItem('bfm_secret') || '';
 
+  // ── In-memory cache (5 min TTL) ──
+  const _cache = {};
+  const CACHE_TTL = 5 * 60 * 1000;
+  function cacheKey(action, params) { return action + ':' + JSON.stringify(params); }
+  function getCache(key) {
+    const c = _cache[key];
+    if (c && Date.now() - c.ts < CACHE_TTL) return c.data;
+    delete _cache[key];
+    return null;
+  }
+  function setCache(key, data) { _cache[key] = { data, ts: Date.now() }; }
+  function clearCache() { Object.keys(_cache).forEach(k => delete _cache[k]); }
+
+  // Actions that are read-only and safe to cache
+  const CACHEABLE = ['getTransactions', 'getReminders', 'getMonthlySummary', 'getYearlySummary', 'getSettings', 'getUpcomingReminders', 'checkPinExists'];
+  // Actions that invalidate cache
+  const WRITE_ACTIONS = ['addTransaction', 'editTransaction', 'deleteTransaction', 'addReminder', 'updateReminder', 'deleteReminder', 'toggleReminder', 'updateSetting', 'setInitialPin', 'changePin'];
+
   function setBaseUrl(url) {
     BASE_URL = url.replace(/\/+$/, '');
     localStorage.setItem('bfm_api_url', BASE_URL);
@@ -27,6 +45,15 @@ const API = (() => {
 
   async function call(action, params = {}) {
     if (!BASE_URL) throw new Error('กรุณาตั้งค่า API URL ก่อน');
+
+    // Check cache for read-only actions
+    const ck = cacheKey(action, params);
+    if (CACHEABLE.includes(action)) {
+      const cached = getCache(ck);
+      if (cached) return cached;
+    }
+    // Clear cache on write actions
+    if (WRITE_ACTIONS.includes(action)) clearCache();
 
     const body = { action, ...params };
     // Add secret to non-open actions
@@ -54,6 +81,8 @@ const API = (() => {
       if (!data.success) {
         throw new Error(data.error || 'เกิดข้อผิดพลาด');
       }
+      // Cache successful read responses
+      if (CACHEABLE.includes(action)) setCache(ck, data.data);
       return data.data;
     } catch (err) {
       if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
@@ -96,7 +125,7 @@ const API = (() => {
   const init = () => call('init');
 
   return {
-    setBaseUrl, setSecret, getSecret, isConfigured, call,
+    setBaseUrl, setSecret, getSecret, isConfigured, call, clearCache,
     checkPinExists, setInitialPin, verifyPin, changePin,
     addTransaction, getTransactions, editTransaction, deleteTransaction,
     addReminder, getReminders, updateReminder, deleteReminder, toggleReminder, getUpcomingReminders,

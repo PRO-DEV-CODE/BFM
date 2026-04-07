@@ -102,16 +102,13 @@ const Auth = (() => {
   }
 
   async function startAuthFlow(container, onSuccess) {
-    // Init sheets on first load
-    try { await API.init(); } catch(e) { /* ignore */ }
-
-    // Step 2: Check if already authenticated this session
+    // Already authenticated this session — skip all API calls
     if (isAuthenticated() && API.getSecret()) {
       onSuccess();
       return;
     }
 
-    // Step 3: Check if PIN exists
+    // Check if PIN exists (also inits sheets first time)
     try {
       const result = await API.checkPinExists();
       if (!result.exists) {

@@ -52,13 +52,12 @@ const App = (() => {
 
     // Auth flow
     Auth.startAuthFlow(app, async () => {
-      // Authenticated — render main UI
+      // Authenticated — render main UI immediately
       app.innerHTML = renderShell();
       bindNav();
-      try {
-        settings = await API.getSettings();
-      } catch { settings = {}; }
       navigate('dashboard');
+      // Load settings & notifications in background
+      API.getSettings().then(s => settings = s).catch(() => settings = {});
       checkNotifications();
     });
   }
