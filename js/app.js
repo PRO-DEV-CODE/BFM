@@ -6,6 +6,8 @@ const App = (() => {
   let currentTab = 'home';
   let settings = null;
   let profileCache = null;
+  let membersCache = [];
+  let currentMember = null; // { id, name, avatarColor, role }
 
   // ── Icon Helper ──
   function mi(name, cls = '') { return `<span class="mi ${cls}">${name}</span>`; }
@@ -72,31 +74,70 @@ const App = (() => {
       navigate('home');
       Promise.all([
         API.getSettings().then(s => settings = s).catch(() => settings = {}),
-        API.getProfile().then(p => { profileCache = p; updateHeaderAvatar(); }).catch(() => {})
+        API.getProfile().then(p => { profileCache = p; updateHeaderAvatar(); }).catch(() => {}),
+        loadMembers()
       ]);
       checkNotifications();
     });
   }
 
-  function updateHeaderAvatar() {
-    const el = document.getElementById('header-avatar');
-    if (el && profileCache && profileCache.avatarColor) {
-      el.style.background = profileCache.avatarColor;
+  async function loadMembers() {
+    try {
+      membersCache = await API.getMembers() || [];
+      // Restore last selected member
+      const saved = localStorage.getItem('bfm_current_member');
+      if (saved) {
+        currentMember = membersCache.find(m => m.id === saved) || membersCache[0] || null;
+      } else {
+        currentMember = membersCache[0] || null;
+      }
+      updateHeaderMember();
+    } catch { membersCache = []; }
+  }
+
+  function setCurrentMember(member) {
+    currentMember = member;
+    if (member) localStorage.setItem('bfm_current_member', member.id);
+    else localStorage.removeItem('bfm_current_member');
+    updateHeaderMember();
+    API.clearCache();
+  }
+
+  function updateHeaderMember() {
+    const el = document.getElementById('header-member-name');
+    const av = document.getElementById('header-avatar');
+    if (el) el.textContent = currentMember ? currentMember.name : 'ครอบครัว';
+    if (av && currentMember && currentMember.avatarColor) {
+      av.style.background = currentMember.avatarColor;
+      av.textContent = '';
+      av.innerHTML = `<span style="font-size:0.85rem;font-weight:700;color:#fff">${currentMember.name.charAt(0).toUpperCase()}</span>`;
+    } else if (av) {
+      av.style.background = profileCache?.avatarColor || '#1a3a6b';
+      av.innerHTML = mi('person');
     }
+  }
+
+  function updateHeaderAvatar() {
+    updateHeaderMember();
   }
 
   function renderShell() {
     return `
       <div class="app-shell">
         <header class="app-header">
-          <div class="header-left">
+          <div class="header-left" id="header-member-switch">
             <div class="header-avatar" id="header-avatar">${mi('person')}</div>
-            <span class="header-title">BFM</span>
+            <div class="header-member-info">
+              <span class="header-title">BFM</span>
+              <span class="header-member-name" id="header-member-name">ครอบครัว</span>
+            </div>
+            <span class="mi mi-sm" style="color:var(--text-muted);margin-left:2px">expand_more</span>
           </div>
           <div class="header-right">
             <button class="btn-icon" id="btn-calendar-header" title="ปฏิทิน">${mi('calendar_month')}</button>
           </div>
         </header>
+        <div id="member-dropdown" class="member-dropdown hidden"></div>
         <div id="notification-bar" class="notification-bar hidden"></div>
         <main id="main-content" class="main-content"></main>
         <nav class="bottom-nav">
@@ -123,7 +164,54 @@ const App = (() => {
     });
     document.getElementById('btn-nav-add').addEventListener('click', () => navigate('add'));
     document.getElementById('btn-calendar-header').addEventListener('click', () => navigate('calendar'));
-    document.getElementById('header-avatar').addEventListener('click', () => navigate('profile'));
+
+    // Member switcher dropdown
+    const switchBtn = document.getElementById('header-member-switch');
+    const dropdown = document.getElementById('member-dropdown');
+    switchBtn.addEventListener('click', () => {
+      const open = !dropdown.classList.contains('hidden');
+      if (open) { dropdown.classList.add('hidden'); return; }
+      renderMemberDropdown();
+      dropdown.classList.remove('hidden');
+    });
+    document.addEventListener('click', (e) => {
+      if (!switchBtn.contains(e.target) && !dropdown.contains(e.target)) {
+        dropdown.classList.add('hidden');
+      }
+    });
+  }
+
+  function renderMemberDropdown() {
+    const dropdown = document.getElementById('member-dropdown');
+    const items = membersCache.map(m => {
+      const active = currentMember && currentMember.id === m.id;
+      return `<div class="member-dd-item ${active ? 'active' : ''}" data-mid="${m.id}">
+        <div class="member-dd-avatar" style="background:${m.avatarColor}">${m.name.charAt(0).toUpperCase()}</div>
+        <div class="member-dd-name">${m.name}</div>
+        ${active ? mi('check_circle', 'mi-sm') : ''}
+      </div>`;
+    }).join('');
+
+    dropdown.innerHTML = `
+      <div class="member-dd-header">สมาชิกครอบครัว</div>
+      ${items || '<div class="member-dd-empty">ยังไม่มีสมาชิก</div>'}
+      <div class="member-dd-divider"></div>
+      <div class="member-dd-item member-dd-manage" id="dd-manage-members">
+        ${mi('group_add', 'mi-sm')}
+        <div class="member-dd-name">จัดการสมาชิก</div>
+      </div>`;
+
+    dropdown.querySelectorAll('.member-dd-item[data-mid]').forEach(el => {
+      el.addEventListener('click', () => {
+        const m = membersCache.find(x => x.id === el.dataset.mid);
+        if (m) { setCurrentMember(m); navigate(currentTab); }
+        dropdown.classList.add('hidden');
+      });
+    });
+    document.getElementById('dd-manage-members')?.addEventListener('click', () => {
+      dropdown.classList.add('hidden');
+      navigate('members');
+    });
   }
 
   function navigate(tab) {
@@ -139,6 +227,7 @@ const App = (() => {
       case 'settings': renderSettings(main); break;
       case 'reminders': renderReminders(main); break;
       case 'summary': renderSummary(main); break;
+      case 'members': renderMembers(main); break;
     }
   }
 
@@ -283,7 +372,7 @@ const App = (() => {
                 <div class="txn-icon ${t.type}">${getCatIcon(t.category)}</div>
                 <div class="txn-left">
                   <span class="txn-name">${t.description || t.category}</span>
-                  <span class="txn-meta">${t.category} • ${formatDate(t.date)}</span>
+                  <span class="txn-meta">${t.category}${t.createdBy ? ' • ' + t.createdBy : ''} • ${formatDate(t.date)}</span>
                 </div>
                 <div class="txn-right">
                   <span class="txn-amount ${t.type}">${t.type === 'income' ? '+' : '-'}฿${formatMoney(t.amount)}</span>
@@ -432,7 +521,8 @@ const App = (() => {
           type: document.getElementById('txn-type').value,
           amount: Number(amount), category,
           date: document.getElementById('txn-date').value,
-          description: document.getElementById('txn-desc').value
+          description: document.getElementById('txn-desc').value,
+          createdBy: currentMember ? currentMember.name : ''
         };
         if (isEdit) { data.id = editData.id; await API.editTransaction(data); showToast('แก้ไขสำเร็จ'); navigate('history'); }
         else { await API.addTransaction(data); showToast('บันทึกสำเร็จ');
@@ -540,7 +630,7 @@ const App = (() => {
               </div>
               <div class="hist-txn-info">
                 <span class="hist-txn-name">${t.description || t.category}</span>
-                <span class="hist-txn-meta">${t.category} · ${formatDate(t.date)}</span>
+                <span class="hist-txn-meta">${t.category}${t.createdBy ? ' · ' + t.createdBy : ''} · ${formatDate(t.date)}</span>
               </div>
               <div class="hist-txn-amount ${t.type}">${t.type === 'income' ? '+' : '-'}฿${formatMoney(t.amount)}</div>
             </div>
@@ -895,6 +985,155 @@ const App = (() => {
   }
 
   // ══════════════════════════════════════
+  // MEMBERS MANAGEMENT
+  // ══════════════════════════════════════
+  async function renderMembers(el) {
+    showLoading(el);
+    try {
+      const members = await API.getMembers() || [];
+      membersCache = members;
+
+      el.innerHTML = `
+        <div class="members-page">
+          <div class="members-header">
+            <div>
+              <h2 class="members-title">${mi('group', 'mi-sm')} สมาชิกครอบครัว</h2>
+              <p class="members-sub">ข้อมูลทั้งหมดใช้ร่วมกัน · เพิ่มสมาชิกเพื่อแยกรายการ</p>
+            </div>
+          </div>
+
+          <div class="members-list" id="members-list">
+            ${members.map(m => `
+              <div class="member-card" data-mid="${m.id}">
+                <div class="member-avatar" style="background:${m.avatarColor}">${m.name.charAt(0).toUpperCase()}</div>
+                <div class="member-info">
+                  <div class="member-name">${m.name}</div>
+                  <div class="member-role">${m.role === 'admin' ? 'ผู้ดูแล' : 'สมาชิก'}</div>
+                </div>
+                <div class="member-actions">
+                  <button class="btn-icon member-edit" data-mid="${m.id}">${mi('edit', 'mi-sm')}</button>
+                  <button class="btn-icon member-del" data-mid="${m.id}">${mi('delete', 'mi-sm')}</button>
+                </div>
+              </div>
+            `).join('') || '<p class="no-data">ยังไม่มีสมาชิก</p>'}
+          </div>
+
+          <button class="btn btn-primary btn-full" id="btn-add-member" style="margin-top:16px">
+            ${mi('person_add', 'mi-sm')} เพิ่มสมาชิกใหม่
+          </button>
+        </div>
+
+        <div id="member-form-modal" class="form-overlay hidden">
+          <div class="form-modal">
+            <h3 id="member-form-title">${mi('person_add', 'mi-sm')} เพิ่มสมาชิก</h3>
+            <form id="member-form" class="form">
+              <input type="hidden" id="mf-id">
+              <div class="form-group"><label>ชื่อสมาชิก</label><input type="text" id="mf-name" class="input-field" required maxlength="30"></div>
+              <div class="form-group">
+                <label>สีประจำตัว</label>
+                <div class="color-grid">${
+                  ['#1a3a6b','#3b82f6','#6366f1','#8b5cf6','#ec4899','#ef4444',
+                   '#f59e0b','#f97316','#22c55e','#06b6d4','#14b8a6','#64748b'].map(c =>
+                    `<button type="button" class="color-btn mf-color-btn" data-color="${c}" style="background:${c}"></button>`
+                  ).join('')}
+                </div>
+                <input type="hidden" id="mf-color" value="#1a3a6b">
+              </div>
+              <div class="form-group">
+                <label>บทบาท</label>
+                <select id="mf-role" class="input-field">
+                  <option value="member">สมาชิก</option>
+                  <option value="admin">ผู้ดูแล</option>
+                </select>
+              </div>
+              <div class="form-buttons">
+                <button type="button" class="btn btn-outline" id="btn-cancel-member">ยกเลิก</button>
+                <button type="submit" class="btn btn-primary" id="btn-save-member">บันทึก</button>
+              </div>
+            </form>
+          </div>
+        </div>`;
+
+      // Bind color picker
+      el.querySelectorAll('.mf-color-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          el.querySelectorAll('.mf-color-btn').forEach(b => b.classList.remove('selected'));
+          btn.classList.add('selected');
+          document.getElementById('mf-color').value = btn.dataset.color;
+        });
+      });
+      // Default select first color
+      el.querySelector('.mf-color-btn')?.classList.add('selected');
+
+      function openForm(member = null) {
+        const modal = document.getElementById('member-form-modal');
+        document.getElementById('member-form-title').innerHTML = member
+          ? mi('edit', 'mi-sm') + ' แก้ไขสมาชิก'
+          : mi('person_add', 'mi-sm') + ' เพิ่มสมาชิก';
+        document.getElementById('mf-id').value = member ? member.id : '';
+        document.getElementById('mf-name').value = member ? member.name : '';
+        document.getElementById('mf-color').value = member ? member.avatarColor : '#1a3a6b';
+        document.getElementById('mf-role').value = member ? member.role : 'member';
+        el.querySelectorAll('.mf-color-btn').forEach(b => {
+          b.classList.toggle('selected', b.dataset.color === (member ? member.avatarColor : '#1a3a6b'));
+        });
+        modal.classList.remove('hidden');
+      }
+
+      document.getElementById('btn-add-member').addEventListener('click', () => openForm());
+      document.getElementById('btn-cancel-member').addEventListener('click', () =>
+        document.getElementById('member-form-modal').classList.add('hidden'));
+
+      // Edit / Delete buttons
+      el.querySelectorAll('.member-edit').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const m = members.find(x => x.id === btn.dataset.mid);
+          if (m) openForm(m);
+        });
+      });
+      el.querySelectorAll('.member-del').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          if (!confirm('ลบสมาชิกนี้?')) return;
+          try {
+            await API.deleteMember(btn.dataset.mid);
+            showToast('ลบสำเร็จ');
+            if (currentMember && currentMember.id === btn.dataset.mid) setCurrentMember(null);
+            renderMembers(el);
+          } catch (err) { showToast(err.message, 'error'); }
+        });
+      });
+
+      // Form submit
+      document.getElementById('member-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('mf-id').value;
+        const name = document.getElementById('mf-name').value.trim();
+        const avatarColor = document.getElementById('mf-color').value;
+        const role = document.getElementById('mf-role').value;
+        if (!name) { showToast('กรุณาใส่ชื่อ', 'error'); return; }
+        const btn = document.getElementById('btn-save-member');
+        btn.disabled = true; btn.textContent = 'กำลังบันทึก...';
+        try {
+          if (id) {
+            await API.updateMember({ id, name, avatarColor, role });
+            showToast('แก้ไขสำเร็จ');
+          } else {
+            await API.addMember({ name, avatarColor, role });
+            showToast('เพิ่มสมาชิกสำเร็จ');
+          }
+          document.getElementById('member-form-modal').classList.add('hidden');
+          await loadMembers();
+          renderMembers(el);
+        } catch (err) { showToast(err.message, 'error'); }
+        finally { btn.disabled = false; btn.textContent = 'บันทึก'; }
+      });
+
+    } catch (err) {
+      el.innerHTML = `<div class="error-page"><p>${mi('error')} ${err.message}</p><button class="btn btn-primary" onclick="App.navigate('members')">ลองใหม่</button></div>`;
+    }
+  }
+
+  // ══════════════════════════════════════
   // PROFILE
   // ══════════════════════════════════════
   async function renderProfile(el) {
@@ -968,6 +1207,7 @@ const App = (() => {
           <div class="profile-section">
             <h3>จัดการ</h3>
             <div style="display:flex;flex-direction:column;gap:8px">
+              <button class="btn btn-outline btn-full" onclick="App.navigate('members')">${mi('group', 'mi-sm')} สมาชิกครอบครัว</button>
               <button class="btn btn-outline btn-full" onclick="App.navigate('reminders')">${mi('notifications', 'mi-sm')} จัดการแจ้งเตือน</button>
               <button class="btn btn-outline btn-full" onclick="App.navigate('summary')">${mi('bar_chart', 'mi-sm')} สรุปรายเดือน</button>
               <button class="btn btn-outline btn-full" onclick="App.navigate('settings')">${mi('settings', 'mi-sm')} ตั้งค่าทั้งหมด</button>

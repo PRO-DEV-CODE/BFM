@@ -11,6 +11,7 @@ const SH_REMINDERS = 'Reminders';
 const SH_SETTINGS = 'Settings';
 const SH_SUMMARY = 'MonthlySummary';
 const SH_PROFILE = 'Profile';
+const SH_MEMBERS = 'Members';
 
 // ── Default Categories ──
 const DEFAULT_EXPENSE_CATS = JSON.stringify([
@@ -73,6 +74,8 @@ function initSheets() {
     ['yearMonth','totalIncome','totalExpense','balance','topCategory']);
   getOrCreateSheet(SH_PROFILE,
     ['key','value']);
+  getOrCreateSheet(SH_MEMBERS,
+    ['id','name','avatarColor','role','createdAt']);
 
   // Seed default settings if empty
   const settingsSheet = getSpreadsheet().getSheetByName(SH_SETTINGS);
@@ -172,6 +175,12 @@ function handleRequest(e) {
       // -- Profile --
       case 'getProfile':       return getProfileApi();
       case 'updateProfile':    return updateProfileApi(p);
+
+      // -- Members --
+      case 'getMembers':       return getMembersApi();
+      case 'addMember':        return addMemberApi(p);
+      case 'updateMember':     return updateMemberApi(p);
+      case 'deleteMember':     return deleteMemberApi(p.id);
 
       default:
         return jsonErr('Unknown action: ' + action);
@@ -273,7 +282,8 @@ function addTransaction(p) {
     p.category || 'อื่นๆ',
     Number(p.amount) || 0,
     p.description || '',
-    now
+    now,
+    p.createdBy || ''
   ]);
   return jsonOk({ id: id });
 }
@@ -297,7 +307,8 @@ function getTransactions(month) {
       category: r[3],
       amount: Number(r[4]),
       description: r[5],
-      created: r[6]
+      created: r[6],
+      createdBy: r[7] || ''
     });
   }
   // Sort by date descending
@@ -708,4 +719,71 @@ function updateProfileApi(p) {
     updated.push(key);
   }
   return jsonOk({ updated: updated });
+}
+
+// ══════════════════════════════════════
+// MEMBERS (Family Multi-User)
+// ══════════════════════════════════════
+function getMembersApi() {
+  var sheet = getSpreadsheet().getSheetByName(SH_MEMBERS);
+  if (!sheet) return jsonOk([]);
+  var data = sheet.getDataRange().getValues();
+  var members = [];
+  for (var i = 1; i < data.length; i++) {
+    var r = data[i];
+    if (!r[0]) continue;
+    members.push({
+      id: r[0],
+      name: r[1],
+      avatarColor: r[2] || '#1a3a6b',
+      role: r[3] || 'member',
+      createdAt: r[4]
+    });
+  }
+  return jsonOk(members);
+}
+
+function addMemberApi(p) {
+  if (!p.name || !String(p.name).trim()) return jsonErr('กรุณาใส่ชื่อสมาชิก');
+  var sheet = getOrCreateSheet(SH_MEMBERS, ['id','name','avatarColor','role','createdAt']);
+  var id = uuid();
+  sheet.appendRow([
+    id,
+    String(p.name).trim(),
+    p.avatarColor || '#1a3a6b',
+    p.role || 'member',
+    new Date().toISOString()
+  ]);
+  return jsonOk({ id: id, name: String(p.name).trim(), avatarColor: p.avatarColor || '#1a3a6b', role: p.role || 'member' });
+}
+
+function updateMemberApi(p) {
+  if (!p.id) return jsonErr('ไม่พบ ID สมาชิก');
+  var sheet = getSpreadsheet().getSheetByName(SH_MEMBERS);
+  if (!sheet) return jsonErr('ไม่พบข้อมูลสมาชิก');
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] === p.id) {
+      var row = i + 1;
+      if (p.name !== undefined) sheet.getRange(row, 2).setValue(String(p.name).trim());
+      if (p.avatarColor !== undefined) sheet.getRange(row, 3).setValue(p.avatarColor);
+      if (p.role !== undefined) sheet.getRange(row, 4).setValue(p.role);
+      return jsonOk('แก้ไขสำเร็จ');
+    }
+  }
+  return jsonErr('ไม่พบสมาชิก');
+}
+
+function deleteMemberApi(id) {
+  if (!id) return jsonErr('ไม่พบ ID สมาชิก');
+  var sheet = getSpreadsheet().getSheetByName(SH_MEMBERS);
+  if (!sheet) return jsonErr('ไม่พบข้อมูลสมาชิก');
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] === id) {
+      sheet.deleteRow(i + 1);
+      return jsonOk('ลบสำเร็จ');
+    }
+  }
+  return jsonErr('ไม่พบสมาชิก');
 }

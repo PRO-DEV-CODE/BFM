@@ -21,9 +21,9 @@ const API = (() => {
   function clearCache() { Object.keys(_cache).forEach(k => delete _cache[k]); }
 
   // Actions that are read-only and safe to cache
-  const CACHEABLE = ['getTransactions', 'getReminders', 'getMonthlySummary', 'getYearlySummary', 'getSettings', 'getUpcomingReminders', 'checkPinExists', 'getProfile'];
+  const CACHEABLE = ['getTransactions', 'getReminders', 'getMonthlySummary', 'getYearlySummary', 'getSettings', 'getUpcomingReminders', 'checkPinExists', 'getProfile', 'getMembers'];
   // Actions that invalidate cache
-  const WRITE_ACTIONS = ['addTransaction', 'editTransaction', 'deleteTransaction', 'addReminder', 'updateReminder', 'deleteReminder', 'toggleReminder', 'updateSetting', 'setInitialPin', 'changePin', 'updateProfile'];
+  const WRITE_ACTIONS = ['addTransaction', 'editTransaction', 'deleteTransaction', 'addReminder', 'updateReminder', 'deleteReminder', 'toggleReminder', 'updateSetting', 'setInitialPin', 'changePin', 'updateProfile', 'addMember', 'updateMember', 'deleteMember'];
 
   function setBaseUrl(url) {
     BASE_URL = url.replace(/\/+$/, '');
@@ -124,6 +124,12 @@ const API = (() => {
   const getProfile = () => call('getProfile');
   const updateProfile = (data) => call('updateProfile', data);
 
+  // ── Members ──
+  const getMembers = () => call('getMembers');
+  const addMember = (data) => call('addMember', data);
+  const updateMember = (data) => call('updateMember', data);
+  const deleteMember = (id) => call('deleteMember', { id });
+
   // ── Init ──
   const ping = () => call('ping');
   const init = () => call('init');
@@ -136,6 +142,7 @@ const API = (() => {
     getMonthlySummary, getYearlySummary,
     getSettings, updateSetting,
     getProfile, updateProfile,
+    getMembers, addMember, updateMember, deleteMember,
     ping, init
   };
 })();
