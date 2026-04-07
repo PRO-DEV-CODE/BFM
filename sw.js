@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bfm-v15';
+const CACHE_NAME = 'bfm-v16';
 
 // Detect base path dynamically
 const BASE = self.registration.scope;
@@ -48,19 +48,16 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // Static assets — cache first, then network
+  // Static assets — network first, cache fallback
   e.respondWith(
-    caches.match(e.request).then((cached) => {
-      return cached || fetch(e.request).then((response) => {
-        // Cache new requests dynamically
-        if (response.status === 200) {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(e.request, clone));
-        }
-        return response;
-      });
+    fetch(e.request).then((response) => {
+      if (response.status === 200) {
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(e.request, clone));
+      }
+      return response;
     }).catch(() =>
-      caches.match(BASE + 'index.html')
+      caches.match(e.request).then((cached) => cached || caches.match(BASE + 'index.html'))
     )
   );
 });
