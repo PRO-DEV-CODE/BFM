@@ -308,57 +308,107 @@ const App = (() => {
     const type = editData?.type || 'expense';
     const cats = type === 'income' ? cats_inc : cats_exp;
 
+    function renderCatGrid(categories, selectedCat) {
+      return categories.map(c => {
+        const iconName = getCatIconName(c);
+        const color = getCatColor(c);
+        const isActive = selectedCat === c;
+        return `<button type="button" class="add-cat-item ${isActive ? 'active' : ''}" data-cat="${c}">
+          <div class="add-cat-icon" style="background:${color}15;color:${color}">${mi(iconName)}</div>
+          <span class="add-cat-label">${c}</span>
+        </button>`;
+      }).join('');
+    }
+
+    function formatDisplay(val) {
+      if (!val || Number(val) === 0) return '฿ 0.00';
+      return '฿ ' + Number(val).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
     el.innerHTML = `
-      <div class="form-page">
-        <div class="type-toggle">
-          <button class="toggle-btn ${type === 'expense' ? 'active' : ''}" data-type="expense">รายจ่าย</button>
-          <button class="toggle-btn ${type === 'income' ? 'active' : ''}" data-type="income">รายรับ</button>
+      <div class="add-page">
+        <div class="add-header-card">
+          <h2 class="add-title">บันทึกรายการ</h2>
+          <p class="add-subtitle">กรุณากรอกรายละเอียดของรายการเพื่อทำการบันทึก</p>
         </div>
-        <form id="txn-form" class="form">
-          <input type="hidden" id="txn-id" value="${editData?.id || ''}">
-          <input type="hidden" id="txn-type" value="${type}">
-          <div class="form-group">
-            <label>จำนวนเงิน (บาท)</label>
-            <input type="number" id="txn-amount" class="input-field input-amount" placeholder="0"
-                   value="${editData?.amount || ''}" inputmode="decimal" step="0.01" required>
-          </div>
-          <div class="form-group">
-            <label>หมวดหมู่</label>
-            <div class="category-grid" id="category-grid">
-              ${cats.map(c => `<button type="button" class="cat-btn ${editData?.category === c ? 'active' : ''}" data-cat="${c}">${mi(getCatIconName(c), 'mi-sm')} ${c}</button>`).join('')}
+
+        <div class="add-body-card">
+          <form id="txn-form">
+            <input type="hidden" id="txn-id" value="${editData?.id || ''}">
+            <input type="hidden" id="txn-type" value="${type}">
+
+            <div class="add-type-toggle">
+              <button type="button" class="add-toggle-btn ${type === 'expense' ? 'active' : ''}" data-type="expense">
+                ${mi('south_west', 'mi-sm')} รายจ่าย
+              </button>
+              <button type="button" class="add-toggle-btn ${type === 'income' ? 'active' : ''}" data-type="income">
+                ${mi('north_east', 'mi-sm')} รายรับ
+              </button>
             </div>
-            <input type="hidden" id="txn-category" value="${editData?.category || ''}">
-          </div>
-          <div class="form-group">
-            <label>วันที่</label>
-            <input type="date" id="txn-date" class="input-field" value="${editData?.date || getToday()}">
-          </div>
-          <div class="form-group">
-            <label>รายละเอียด</label>
-            <input type="text" id="txn-desc" class="input-field" placeholder="เช่น ข้าวมันไก่" value="${editData?.description || ''}">
-          </div>
-          <button type="submit" class="btn btn-primary btn-full" id="btn-save-txn">
-            ${isEdit ? mi('save', 'mi-sm') + ' บันทึกการแก้ไข' : mi('check_circle', 'mi-sm') + ' บันทึกรายการ'}
-          </button>
-        </form>
+
+            <div class="add-amount-section">
+              <div class="add-amount-display" id="amount-display">${formatDisplay(editData?.amount)}</div>
+              <div class="add-amount-line"></div>
+              <input type="number" id="txn-amount" class="add-amount-input" placeholder="0"
+                     value="${editData?.amount || ''}" inputmode="decimal" step="0.01" required>
+            </div>
+
+            <div class="add-section">
+              <label class="add-section-label">หมวดหมู่</label>
+              <div class="add-cat-grid" id="category-grid">
+                ${renderCatGrid(cats, editData?.category)}
+              </div>
+              <input type="hidden" id="txn-category" value="${editData?.category || ''}">
+            </div>
+
+            <div class="add-section">
+              <label class="add-section-label">วันที่เดือนปี</label>
+              <div class="add-input-row">
+                <div class="add-input-icon">${mi('calendar_month')}</div>
+                <input type="date" id="txn-date" class="add-input-field" value="${editData?.date || getToday()}">
+              </div>
+            </div>
+
+            <div class="add-section">
+              <label class="add-section-label">รายละเอียด</label>
+              <div class="add-input-row">
+                <div class="add-input-icon">${mi('edit_note')}</div>
+                <input type="text" id="txn-desc" class="add-input-field" placeholder="บรรยายรายละเอียดเพิ่มเติม..." value="${editData?.description || ''}">
+              </div>
+            </div>
+
+            <button type="submit" class="add-submit-btn" id="btn-save-txn">
+              ${isEdit ? mi('save', 'mi-sm') + ' บันทึกการแก้ไข' : mi('check_circle', 'mi-sm') + ' บันทึกรายการ'}
+            </button>
+          </form>
+        </div>
       </div>`;
 
-    el.querySelectorAll('.toggle-btn').forEach(btn => {
+    // Amount display sync
+    const amountInput = document.getElementById('txn-amount');
+    const amountDisplay = document.getElementById('amount-display');
+    amountInput.addEventListener('input', () => {
+      amountDisplay.textContent = formatDisplay(amountInput.value);
+    });
+    amountDisplay.addEventListener('click', () => amountInput.focus());
+
+    // Type toggle
+    el.querySelectorAll('.add-toggle-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const t = btn.dataset.type;
         document.getElementById('txn-type').value = t;
-        el.querySelectorAll('.toggle-btn').forEach(b => b.classList.toggle('active', b.dataset.type === t));
+        el.querySelectorAll('.add-toggle-btn').forEach(b => b.classList.toggle('active', b.dataset.type === t));
         const newCats = t === 'income' ? cats_inc : cats_exp;
-        document.getElementById('category-grid').innerHTML = newCats.map(c => `<button type="button" class="cat-btn" data-cat="${c}">${mi(getCatIconName(c), 'mi-sm')} ${c}</button>`).join('');
+        document.getElementById('category-grid').innerHTML = renderCatGrid(newCats, '');
         document.getElementById('txn-category').value = '';
         bindCatButtons();
       });
     });
 
     function bindCatButtons() {
-      el.querySelectorAll('.cat-btn').forEach(btn => {
+      el.querySelectorAll('.add-cat-item').forEach(btn => {
         btn.addEventListener('click', () => {
-          el.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+          el.querySelectorAll('.add-cat-item').forEach(b => b.classList.remove('active'));
           btn.classList.add('active');
           document.getElementById('txn-category').value = btn.dataset.cat;
         });
@@ -384,9 +434,10 @@ const App = (() => {
         if (isEdit) { data.id = editData.id; await API.editTransaction(data); showToast('แก้ไขสำเร็จ'); navigate('history'); }
         else { await API.addTransaction(data); showToast('บันทึกสำเร็จ');
           document.getElementById('txn-amount').value = '';
+          document.getElementById('amount-display').textContent = '฿ 0.00';
           document.getElementById('txn-desc').value = '';
           document.getElementById('txn-category').value = '';
-          el.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+          el.querySelectorAll('.add-cat-item').forEach(b => b.classList.remove('active'));
         }
       } catch (err) { showToast(err.message, 'error'); }
       finally {
