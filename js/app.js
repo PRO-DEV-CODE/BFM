@@ -1,11 +1,14 @@
 // ====================================================
-// BFM App — Banking UI Controller
+// BFM App — Banking UI Controller (Material Icons)
 // ====================================================
 
 const App = (() => {
   let currentTab = 'home';
   let settings = null;
   let profileCache = null;
+
+  // ── Icon Helper ──
+  function mi(name, cls = '') { return `<span class="mi ${cls}">${name}</span>`; }
 
   // ── Format Helpers ──
   function formatMoney(n) { return Number(n || 0).toLocaleString('th-TH'); }
@@ -35,11 +38,12 @@ const App = (() => {
     setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 2500);
   }
 
+  // ── Category Icon Mapping (Material Symbols names) ──
   const CAT_ICONS = {
-    'อาหาร': '🍽️', 'ค่าเดินทาง': '🚗', 'ค่าบัตรเครดิต': '💳',
-    'พรบ./ประกัน': '📄', 'ค่าน้ำ/ไฟ/เน็ต': '💡', 'ช้อปปิ้ง': '🛍️',
-    'สุขภาพ': '❤️', 'การศึกษา': '📚', 'อื่นๆ': '📦',
-    'เงินเดือน': '💰', 'งานเสริม': '💼', 'ลงทุน': '📈'
+    'อาหาร': 'restaurant', 'ค่าเดินทาง': 'directions_car', 'ค่าบัตรเครดิต': 'credit_card',
+    'พรบ./ประกัน': 'description', 'ค่าน้ำ/ไฟ/เน็ต': 'bolt', 'ช้อปปิ้ง': 'shopping_bag',
+    'สุขภาพ': 'favorite', 'การศึกษา': 'menu_book', 'อื่นๆ': 'inventory_2',
+    'เงินเดือน': 'account_balance_wallet', 'งานเสริม': 'work', 'ลงทุน': 'trending_up'
   };
   const CAT_COLORS = {
     'อาหาร': '#f59e0b', 'ค่าเดินทาง': '#3b82f6', 'ค่าบัตรเครดิต': '#8b5cf6',
@@ -52,7 +56,8 @@ const App = (() => {
     'ค่าน้ำ/ไฟ/เน็ต': 'bills', 'สุขภาพ': 'health'
   };
 
-  function getCatIcon(cat) { return CAT_ICONS[cat] || '📦'; }
+  function getCatIcon(cat) { return mi(CAT_ICONS[cat] || 'inventory_2'); }
+  function getCatIconName(cat) { return CAT_ICONS[cat] || 'inventory_2'; }
   function getCatColor(cat) { return CAT_COLORS[cat] || '#94a3b8'; }
   function getCatBg(cat) { return CAT_BG[cat] || 'other'; }
 
@@ -65,7 +70,6 @@ const App = (() => {
       app.innerHTML = renderShell();
       bindNav();
       navigate('home');
-      // Load in background
       Promise.all([
         API.getSettings().then(s => settings = s).catch(() => settings = {}),
         API.getProfile().then(p => { profileCache = p; updateHeaderAvatar(); }).catch(() => {})
@@ -76,8 +80,8 @@ const App = (() => {
 
   function updateHeaderAvatar() {
     const el = document.getElementById('header-avatar');
-    if (el && profileCache) {
-      el.textContent = profileCache.avatarEmoji || '👤';
+    if (el && profileCache && profileCache.avatarColor) {
+      el.style.background = profileCache.avatarColor;
     }
   }
 
@@ -86,28 +90,28 @@ const App = (() => {
       <div class="app-shell">
         <header class="app-header">
           <div class="header-left">
-            <div class="header-avatar" id="header-avatar">👤</div>
+            <div class="header-avatar" id="header-avatar">${mi('person')}</div>
             <span class="header-title">BFM</span>
           </div>
           <div class="header-right">
-            <button class="btn-icon" id="btn-calendar-header" title="ปฏิทิน">📅</button>
+            <button class="btn-icon" id="btn-calendar-header" title="ปฏิทิน">${mi('calendar_month')}</button>
           </div>
         </header>
         <div id="notification-bar" class="notification-bar hidden"></div>
         <main id="main-content" class="main-content"></main>
         <nav class="bottom-nav">
           <button class="nav-btn active" data-tab="home">
-            <span class="nav-icon">🏠</span><span class="nav-label">HOME</span>
+            <span class="nav-icon">${mi('home')}</span><span class="nav-label">HOME</span>
           </button>
           <button class="nav-btn" data-tab="history">
-            <span class="nav-icon">🕐</span><span class="nav-label">HISTORY</span>
+            <span class="nav-icon">${mi('schedule')}</span><span class="nav-label">HISTORY</span>
           </button>
-          <button class="nav-btn-add" id="btn-nav-add">+</button>
+          <button class="nav-btn-add" id="btn-nav-add">${mi('add', 'mi-lg')}</button>
           <button class="nav-btn" data-tab="calendar">
-            <span class="nav-icon">📅</span><span class="nav-label">CALENDAR</span>
+            <span class="nav-icon">${mi('calendar_month')}</span><span class="nav-label">CALENDAR</span>
           </button>
           <button class="nav-btn" data-tab="profile">
-            <span class="nav-icon">👤</span><span class="nav-label">PROFILE</span>
+            <span class="nav-icon">${mi('person')}</span><span class="nav-label">PROFILE</span>
           </button>
         </nav>
       </div>`;
@@ -144,9 +148,9 @@ const App = (() => {
       if (upcoming && upcoming.length > 0) {
         const bar = document.getElementById('notification-bar');
         const msgs = upcoming.map(r =>
-          `⚠️ ${r.name} — ครบกำหนด${r.daysLeft === 0 ? 'วันนี้!' : 'อีก ' + r.daysLeft + ' วัน'} (${formatMoney(r.amount)} ฿)`
+          `${mi('warning', 'mi-sm')} ${r.name} — ครบกำหนด${r.daysLeft === 0 ? 'วันนี้!' : 'อีก ' + r.daysLeft + ' วัน'} (${formatMoney(r.amount)} ฿)`
         );
-        bar.innerHTML = msgs.join('<br>') + `<button class="notif-close" onclick="this.parentElement.classList.add('hidden')">✕</button>`;
+        bar.innerHTML = msgs.join('<br>') + `<button class="notif-close" onclick="this.parentElement.classList.add('hidden')">${mi('close', 'mi-sm')}</button>`;
         bar.classList.remove('hidden');
       }
     } catch {}
@@ -168,30 +172,25 @@ const App = (() => {
       const recent = txns.slice(0, 5);
       const balance = (summaryData.totalIncome || 0) - (summaryData.totalExpense || 0);
 
-      // Weekly spending
       const weekDays = ['จ','อ','พ','พฤ','ศ','ส','อา'];
       const weeklyTotals = [0,0,0,0,0,0,0];
       txns.forEach(t => {
         if (t.type === 'expense') {
           const d = new Date(t.date);
-          const day = (d.getDay() + 6) % 7; // Mon=0
+          const day = (d.getDay() + 6) % 7;
           weeklyTotals[day] += t.amount;
         }
       });
       const maxWeekly = Math.max(...weeklyTotals, 1);
 
-      // Category breakdown for top categories
       const catTotals = {};
       const totalExpense = summaryData.totalExpense || 1;
       txns.filter(t => t.type === 'expense').forEach(t => {
         catTotals[t.category] = (catTotals[t.category] || 0) + t.amount;
       });
-      const topCats = Object.entries(catTotals)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 4);
+      const topCats = Object.entries(catTotals).sort((a, b) => b[1] - a[1]).slice(0, 4);
 
       el.innerHTML = `
-        <!-- Balance Card -->
         <div class="balance-card">
           <div class="balance-label">ยอดเงินคงเหลือทั้งหมด</div>
           <div class="balance-amount">฿${formatMoney(balance)}</div>
@@ -207,7 +206,6 @@ const App = (() => {
           </div>
         </div>
 
-        <!-- Weekly Chart -->
         <div class="section-header">
           <span class="section-title">แนวโน้มการใช้จ่าย</span>
           <button class="section-link" onclick="App.navigate('summary')">ดูทั้งหมด</button>
@@ -225,7 +223,6 @@ const App = (() => {
           </div>
         </div>
 
-        <!-- Top Categories -->
         ${topCats.length ? `
           <div class="section-header">
             <span class="section-title">หมวดหมู่รายจ่าย</span>
@@ -259,10 +256,9 @@ const App = (() => {
             </div>` : ''}
         ` : ''}
 
-        <!-- Upcoming Reminders -->
         ${(upcoming || []).length ? `
           <div class="section-header">
-            <span class="section-title">🔔 การชำระที่ใกล้ถึง</span>
+            <span class="section-title">${mi('notifications', 'mi-sm')} การชำระที่ใกล้ถึง</span>
             <button class="section-link" onclick="App.navigate('reminders')">ดูทั้งหมด</button>
           </div>
           ${(upcoming || []).slice(0, 3).map(r => `
@@ -276,7 +272,6 @@ const App = (() => {
           `).join('')}
         ` : ''}
 
-        <!-- Recent Transactions -->
         <div class="section-header">
           <span class="section-title">รายการล่าสุด</span>
           <button class="section-link" onclick="App.navigate('history')">ดูทั้งหมด</button>
@@ -299,7 +294,7 @@ const App = (() => {
         ` : '<p class="no-data">ยังไม่มีรายการเดือนนี้</p>'}
       `;
     } catch (err) {
-      el.innerHTML = `<div class="error-page"><p>⚠️ ${err.message}</p><button class="btn btn-primary" onclick="App.navigate('home')">ลองใหม่</button></div>`;
+      el.innerHTML = `<div class="error-page"><p>${mi('error')} ${err.message}</p><button class="btn btn-primary" onclick="App.navigate('home')">ลองใหม่</button></div>`;
     }
   }
 
@@ -330,7 +325,7 @@ const App = (() => {
           <div class="form-group">
             <label>หมวดหมู่</label>
             <div class="category-grid" id="category-grid">
-              ${cats.map(c => `<button type="button" class="cat-btn ${editData?.category === c ? 'active' : ''}" data-cat="${c}">${getCatIcon(c)} ${c}</button>`).join('')}
+              ${cats.map(c => `<button type="button" class="cat-btn ${editData?.category === c ? 'active' : ''}" data-cat="${c}">${mi(getCatIconName(c), 'mi-sm')} ${c}</button>`).join('')}
             </div>
             <input type="hidden" id="txn-category" value="${editData?.category || ''}">
           </div>
@@ -343,7 +338,7 @@ const App = (() => {
             <input type="text" id="txn-desc" class="input-field" placeholder="เช่น ข้าวมันไก่" value="${editData?.description || ''}">
           </div>
           <button type="submit" class="btn btn-primary btn-full" id="btn-save-txn">
-            ${isEdit ? '💾 บันทึกการแก้ไข' : '✅ บันทึกรายการ'}
+            ${isEdit ? mi('save', 'mi-sm') + ' บันทึกการแก้ไข' : mi('check_circle', 'mi-sm') + ' บันทึกรายการ'}
           </button>
         </form>
       </div>`;
@@ -354,7 +349,7 @@ const App = (() => {
         document.getElementById('txn-type').value = t;
         el.querySelectorAll('.toggle-btn').forEach(b => b.classList.toggle('active', b.dataset.type === t));
         const newCats = t === 'income' ? cats_inc : cats_exp;
-        document.getElementById('category-grid').innerHTML = newCats.map(c => `<button type="button" class="cat-btn" data-cat="${c}">${getCatIcon(c)} ${c}</button>`).join('');
+        document.getElementById('category-grid').innerHTML = newCats.map(c => `<button type="button" class="cat-btn" data-cat="${c}">${mi(getCatIconName(c), 'mi-sm')} ${c}</button>`).join('');
         document.getElementById('txn-category').value = '';
         bindCatButtons();
       });
@@ -394,7 +389,10 @@ const App = (() => {
           el.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
         }
       } catch (err) { showToast(err.message, 'error'); }
-      finally { btn.disabled = false; btn.textContent = isEdit ? '💾 บันทึกการแก้ไข' : '✅ บันทึกรายการ'; }
+      finally {
+        btn.disabled = false;
+        btn.innerHTML = isEdit ? mi('save', 'mi-sm') + ' บันทึกการแก้ไข' : mi('check_circle', 'mi-sm') + ' บันทึกรายการ';
+      }
     });
   }
 
@@ -405,9 +403,9 @@ const App = (() => {
     const month = getCurrentMonth();
     el.innerHTML = `
       <div class="month-picker">
-        <button class="btn-icon" id="month-prev">◀</button>
+        <button class="btn-icon" id="month-prev">${mi('chevron_left')}</button>
         <input type="month" id="month-select" value="${month}" class="input-field input-month">
-        <button class="btn-icon" id="month-next">▶</button>
+        <button class="btn-icon" id="month-next">${mi('chevron_right')}</button>
       </div>
       <div id="txn-list-container"></div>`;
 
@@ -440,8 +438,8 @@ const App = (() => {
                   <span class="txn-amount ${t.type}">${t.type === 'income' ? '+' : '-'}฿${formatMoney(t.amount)}</span>
                 </div>
                 <div class="txn-actions">
-                  <button class="btn-sm btn-edit" data-id="${t.id}">✏️</button>
-                  <button class="btn-sm btn-delete" data-id="${t.id}">🗑️</button>
+                  <button class="btn-sm btn-edit" data-id="${t.id}">${mi('edit', 'mi-sm')}</button>
+                  <button class="btn-sm btn-delete" data-id="${t.id}">${mi('delete', 'mi-sm')}</button>
                 </div>
               </div>
             `).join('')}
@@ -460,7 +458,7 @@ const App = (() => {
             catch (err) { showToast(err.message, 'error'); }
           });
         });
-      } catch (err) { container.innerHTML = `<div class="error-page"><p>⚠️ ${err.message}</p></div>`; }
+      } catch (err) { container.innerHTML = `<div class="error-page"><p>${mi('error')} ${err.message}</p></div>`; }
     }
 
     monthInput.addEventListener('change', loadTransactions);
@@ -498,11 +496,8 @@ const App = (() => {
       const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
       try { monthTxns = await API.getTransactions(monthStr) || []; } catch { monthTxns = []; }
-
-      // dates with transactions
       const txnDates = new Set(monthTxns.map(t => t.date));
 
-      // Header
       document.getElementById('cal-header-wrap').innerHTML = `
         <div class="cal-header">
           <div>
@@ -510,21 +505,19 @@ const App = (() => {
             <div class="cal-month-value">${monthNames[month]} ${year}</div>
           </div>
           <div class="cal-nav">
-            <button id="cal-prev">‹</button>
-            <button id="cal-next">›</button>
+            <button id="cal-prev">${mi('chevron_left')}</button>
+            <button id="cal-next">${mi('chevron_right')}</button>
           </div>
         </div>`;
 
       document.getElementById('cal-prev').addEventListener('click', () => { calDate.setMonth(calDate.getMonth() - 1); loadMonth(); });
       document.getElementById('cal-next').addEventListener('click', () => { calDate.setMonth(calDate.getMonth() + 1); loadMonth(); });
 
-      // Calendar grid
-      const firstDay = new Date(year, month, 1).getDay(); // 0=Sun
+      const firstDay = new Date(year, month, 1).getDay();
       const daysInMonth = new Date(year, month + 1, 0).getDate();
       const today = getToday();
 
       let daysHtml = '';
-      // Empty cells for days before first
       for (let i = 0; i < firstDay; i++) daysHtml += '<button class="cal-day empty" disabled></button>';
       for (let d = 1; d <= daysInMonth; d++) {
         const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
@@ -548,7 +541,6 @@ const App = (() => {
           renderDailyTxns();
         });
       });
-
       renderDailyTxns();
     }
 
@@ -579,7 +571,6 @@ const App = (() => {
           </div>
         ` : '<p class="no-data">ไม่มีรายการในวันนี้</p>'}`;
     }
-
     loadMonth();
   }
 
@@ -588,7 +579,7 @@ const App = (() => {
   // ══════════════════════════════════════
   async function renderReminders(el) {
     el.innerHTML = `<div>
-      <button class="btn btn-primary btn-full" id="btn-add-reminder" style="margin-bottom:16px">➕ เพิ่มรายการแจ้งเตือน</button>
+      <button class="btn btn-primary btn-full" id="btn-add-reminder" style="margin-bottom:16px">${mi('add_circle', 'mi-sm')} เพิ่มรายการแจ้งเตือน</button>
       <div id="reminder-list-container"></div>
       <div id="reminder-form-container" class="hidden"></div>
     </div>`;
@@ -608,13 +599,13 @@ const App = (() => {
               <label class="switch"><input type="checkbox" ${r.active ? 'checked' : ''} data-id="${r.id}" class="toggle-active"><span class="slider"></span></label>
             </div>
             <div class="reminder-details">
-              <span>📅 ${formatDate(r.dueDate)}</span>
-              <span>💰 ${formatMoney(r.amount)} ฿</span>
-              <span>🔁 ${r.frequency === 'monthly' ? 'รายเดือน' : r.frequency === 'yearly' ? 'รายปี' : 'ครั้งเดียว'}</span>
+              <span>${mi('event', 'mi-sm')} ${formatDate(r.dueDate)}</span>
+              <span>${mi('payments', 'mi-sm')} ${formatMoney(r.amount)} ฿</span>
+              <span>${mi('repeat', 'mi-sm')} ${r.frequency === 'monthly' ? 'รายเดือน' : r.frequency === 'yearly' ? 'รายปี' : 'ครั้งเดียว'}</span>
             </div>
             <div class="reminder-actions">
-              <button class="btn-sm btn-edit" data-id="${r.id}">✏️ แก้ไข</button>
-              <button class="btn-sm btn-delete" data-id="${r.id}">🗑️ ลบ</button>
+              <button class="btn-sm btn-edit" data-id="${r.id}">${mi('edit', 'mi-sm')} แก้ไข</button>
+              <button class="btn-sm btn-delete" data-id="${r.id}">${mi('delete', 'mi-sm')} ลบ</button>
             </div>
           </div>
         `).join('');
@@ -627,7 +618,7 @@ const App = (() => {
         listContainer.querySelectorAll('.btn-edit').forEach(btn => {
           btn.addEventListener('click', () => { const r = reminders.find(x => x.id === btn.dataset.id); if (r) showReminderForm(r); });
         });
-      } catch (err) { listContainer.innerHTML = `<div class="error-page"><p>⚠️ ${err.message}</p></div>`; }
+      } catch (err) { listContainer.innerHTML = `<div class="error-page"><p>${mi('error')} ${err.message}</p></div>`; }
     }
 
     function showReminderForm(editData = null) {
@@ -635,7 +626,7 @@ const App = (() => {
       formContainer.classList.remove('hidden');
       formContainer.innerHTML = `
         <div class="form-overlay"><div class="form-modal">
-          <h3>${isEdit ? '✏️ แก้ไขแจ้งเตือน' : '➕ เพิ่มแจ้งเตือน'}</h3>
+          <h3>${isEdit ? mi('edit', 'mi-sm') + ' แก้ไขแจ้งเตือน' : mi('add_circle', 'mi-sm') + ' เพิ่มแจ้งเตือน'}</h3>
           <form id="reminder-form" class="form">
             <div class="form-group"><label>ชื่อรายการ</label><input type="text" id="rem-name" class="input-field" value="${editData?.name || ''}" required></div>
             <div class="form-group"><label>วันครบกำหนด</label><input type="date" id="rem-due" class="input-field" value="${editData?.dueDate || ''}" required></div>
@@ -679,12 +670,12 @@ const App = (() => {
     const year = new Date().getFullYear().toString();
     el.innerHTML = `<div>
       <div class="month-picker">
-        <button class="btn-icon" id="sum-month-prev">◀</button>
+        <button class="btn-icon" id="sum-month-prev">${mi('chevron_left')}</button>
         <input type="month" id="sum-month-select" value="${month}" class="input-field input-month">
-        <button class="btn-icon" id="sum-month-next">▶</button>
+        <button class="btn-icon" id="sum-month-next">${mi('chevron_right')}</button>
       </div>
       <div id="summary-content"></div>
-      <div class="section-header"><span class="section-title">📊 ภาพรวมปี ${year}</span></div>
+      <div class="section-header"><span class="section-title">${mi('bar_chart', 'mi-sm')} ภาพรวมปี ${year}</span></div>
       <div id="yearly-chart"></div>
     </div>`;
     const monthInput = document.getElementById('sum-month-select');
@@ -700,11 +691,11 @@ const App = (() => {
             <div class="card card-expense"><div class="card-label">รายจ่าย</div><div class="card-value">-${formatMoney(data.totalExpense)}</div></div>
             <div class="card card-balance ${data.balance >= 0 ? 'positive' : 'negative'}"><div class="card-label">คงเหลือ</div><div class="card-value">${data.balance >= 0 ? '+' : ''}${formatMoney(data.balance)}</div></div>
           </div>
-          ${data.topCategory ? `<p class="top-cat">💸 จ่ายมากสุด: <strong>${data.topCategory}</strong></p>` : ''}
-          <div class="section-header"><span class="section-title">📈 รายจ่ายตามหมวดหมู่</span></div>
+          ${data.topCategory ? `<p class="top-cat">${mi('trending_down', 'mi-sm')} จ่ายมากสุด: <strong>${data.topCategory}</strong></p>` : ''}
+          <div class="section-header"><span class="section-title">${mi('pie_chart', 'mi-sm')} รายจ่ายตามหมวดหมู่</span></div>
           <div id="category-pie"></div>`;
         Charts.pieChart(document.getElementById('category-pie'), data.categoryBreakdown);
-      } catch (err) { content.innerHTML = `<div class="error-page"><p>⚠️ ${err.message}</p></div>`; }
+      } catch (err) { content.innerHTML = `<div class="error-page"><p>${mi('error')} ${err.message}</p></div>`; }
     }
     async function loadYearly() {
       const yearlyEl = document.getElementById('yearly-chart');
@@ -724,23 +715,22 @@ const App = (() => {
     try {
       const profile = await API.getProfile();
       profileCache = profile;
-      const emoji = profile.avatarEmoji || '👤';
+      const initials = (profile.displayName || 'U').charAt(0).toUpperCase();
+      const avatarColor = profile.avatarColor || '#1a3a6b';
       const name = profile.displayName || 'ยังไม่ได้ตั้งชื่อ';
       const email = profile.email || '';
 
       el.innerHTML = `
         <div class="profile-page">
-          <!-- Avatar card -->
           <div class="profile-card">
-            <div class="profile-avatar-lg" id="avatar-picker">
-              ${emoji}
-              <div class="profile-avatar-edit">✏️</div>
+            <div class="profile-avatar-lg" id="avatar-picker" style="background:${avatarColor}">
+              <span class="profile-initial">${initials}</span>
+              <div class="profile-avatar-edit">${mi('edit', 'mi-sm')}</div>
             </div>
             <div class="profile-name">${name}</div>
             ${email ? `<div class="profile-email">${email}</div>` : ''}
           </div>
 
-          <!-- Account Info -->
           <div class="profile-section">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
               <h3 style="margin:0">Account Information</h3>
@@ -768,11 +758,10 @@ const App = (() => {
             </div>
           </div>
 
-          <!-- Notification Preferences -->
           <div class="profile-section">
             <h3>Notification Preferences</h3>
             <div class="notification-pref-item">
-              <div class="notif-pref-icon" style="background:#dbeafe">🔔</div>
+              <div class="notif-pref-icon" style="background:#dbeafe;color:#3b82f6">${mi('notifications')}</div>
               <div class="notif-pref-info">
                 <div class="notif-pref-name">Push Notifications</div>
                 <div class="notif-pref-desc">แจ้งเตือนการชำระรายวัน</div>
@@ -780,53 +769,52 @@ const App = (() => {
               <label class="switch"><input type="checkbox" checked disabled><span class="slider"></span></label>
             </div>
             <div class="notification-pref-item">
-              <div class="notif-pref-icon" style="background:#dcfce7">📱</div>
+              <div class="notif-pref-icon" style="background:#dcfce7;color:#22c55e">${mi('smartphone')}</div>
               <div class="notif-pref-info">
                 <div class="notif-pref-name">LINE Notify</div>
-                <div class="notif-pref-desc">${settings?.hasLineToken ? '✅ เชื่อมต่อแล้ว' : 'ยังไม่ได้เชื่อมต่อ'}</div>
+                <div class="notif-pref-desc">${settings?.hasLineToken ? mi('check_circle', 'mi-sm') + ' เชื่อมต่อแล้ว' : 'ยังไม่ได้เชื่อมต่อ'}</div>
               </div>
               <button class="btn-sm" onclick="App.navigate('settings')">ตั้งค่า</button>
             </div>
           </div>
 
-          <!-- Quick Links -->
           <div class="profile-section">
             <h3>จัดการ</h3>
             <div style="display:flex;flex-direction:column;gap:8px">
-              <button class="btn btn-outline btn-full" onclick="App.navigate('reminders')">🔔 จัดการแจ้งเตือน</button>
-              <button class="btn btn-outline btn-full" onclick="App.navigate('summary')">📊 สรุปรายเดือน</button>
-              <button class="btn btn-outline btn-full" onclick="App.navigate('settings')">⚙️ ตั้งค่าทั้งหมด</button>
+              <button class="btn btn-outline btn-full" onclick="App.navigate('reminders')">${mi('notifications', 'mi-sm')} จัดการแจ้งเตือน</button>
+              <button class="btn btn-outline btn-full" onclick="App.navigate('summary')">${mi('bar_chart', 'mi-sm')} สรุปรายเดือน</button>
+              <button class="btn btn-outline btn-full" onclick="App.navigate('settings')">${mi('settings', 'mi-sm')} ตั้งค่าทั้งหมด</button>
             </div>
           </div>
 
-          <!-- Security -->
           <div class="profile-section">
-            <h3>🔐 ความปลอดภัย</h3>
+            <h3>${mi('shield', 'mi-sm')} ความปลอดภัย</h3>
             <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0">
-              <div><div style="font-weight:500">PIN เข้าใช้งาน</div><div style="font-size:0.75rem;color:var(--success)">✅ ตั้งค่าแล้ว</div></div>
+              <div><div style="font-weight:500">PIN เข้าใช้งาน</div><div style="font-size:0.75rem;color:var(--success)">${mi('check_circle', 'mi-sm')} ตั้งค่าแล้ว</div></div>
               <button class="btn-sm" id="btn-go-change-pin">เปลี่ยน PIN</button>
             </div>
           </div>
 
-          <button class="btn btn-danger btn-full" id="btn-logout-profile" style="margin-top:8px">🔒 ออกจากระบบ</button>
+          <button class="btn btn-danger btn-full" id="btn-logout-profile" style="margin-top:8px">${mi('logout', 'mi-sm')} ออกจากระบบ</button>
         </div>
 
-        <div id="emoji-modal" class="form-overlay hidden">
-          <div class="form-modal emoji-modal">
-            <h3>เลือกอิโมจิโปรไฟล์</h3>
-            <div class="emoji-grid">${
-              ['👤','👨','👩','🧑','👨‍💼','👩‍💼','🧑‍💻','👨‍🎓','👩‍🎓','🦸','😀','😎','🤓','🥳','😊','🤩',
-               '🐱','🐶','🦊','🐻','🐼','🦁','🐯','🐸','💰','💎','🏦','📊','🎯','🚀','⭐','🌟','💜','💙','💚','❤️'].map(e =>
-                `<button type="button" class="emoji-btn" data-emoji="${e}">${e}</button>`
+        <div id="color-modal" class="form-overlay hidden">
+          <div class="form-modal">
+            <h3>เลือกสีโปรไฟล์</h3>
+            <div class="color-grid">${
+              ['#1a3a6b','#2d5aa0','#3b82f6','#6366f1','#8b5cf6','#a855f7',
+               '#ec4899','#ef4444','#f59e0b','#f97316','#22c55e','#06b6d4',
+               '#14b8a6','#64748b','#334155','#0f172a'].map(c =>
+                `<button type="button" class="color-btn" data-color="${c}" style="background:${c}"></button>`
               ).join('')}
             </div>
-            <button class="btn btn-outline btn-full" id="btn-close-emoji">ปิด</button>
+            <button class="btn btn-outline btn-full" id="btn-close-color">ปิด</button>
           </div>
         </div>
 
         <div id="edit-profile-modal" class="form-overlay hidden">
           <div class="form-modal">
-            <h3>📝 แก้ไขข้อมูล</h3>
+            <h3>${mi('edit_note', 'mi-sm')} แก้ไขข้อมูล</h3>
             <form id="profile-form" class="form">
               <div class="form-group"><label>FULL NAME</label><input type="text" id="pf-name" class="input-field" value="${profile.displayName || ''}"></div>
               <div class="form-group"><label>NICKNAME</label><input type="text" id="pf-nick" class="input-field" value="${profile.nickname || ''}"></div>
@@ -842,15 +830,15 @@ const App = (() => {
           </div>
         </div>`;
 
-      // Emoji picker
-      document.getElementById('avatar-picker').addEventListener('click', () => document.getElementById('emoji-modal').classList.remove('hidden'));
-      document.getElementById('btn-close-emoji').addEventListener('click', () => document.getElementById('emoji-modal').classList.add('hidden'));
-      document.querySelectorAll('.emoji-btn').forEach(btn => {
+      // Color picker
+      document.getElementById('avatar-picker').addEventListener('click', () => document.getElementById('color-modal').classList.remove('hidden'));
+      document.getElementById('btn-close-color').addEventListener('click', () => document.getElementById('color-modal').classList.add('hidden'));
+      document.querySelectorAll('.color-btn').forEach(btn => {
         btn.addEventListener('click', async () => {
-          const em = btn.dataset.emoji;
-          document.querySelector('.profile-avatar-lg').childNodes[0].textContent = em;
-          document.getElementById('emoji-modal').classList.add('hidden');
-          try { await API.updateProfile({ avatarEmoji: em }); profileCache.avatarEmoji = em; updateHeaderAvatar(); } catch {}
+          const color = btn.dataset.color;
+          document.querySelector('.profile-avatar-lg').style.background = color;
+          document.getElementById('color-modal').classList.add('hidden');
+          try { await API.updateProfile({ avatarColor: color }); profileCache.avatarColor = color; updateHeaderAvatar(); } catch {}
         });
       });
 
@@ -871,7 +859,7 @@ const App = (() => {
           });
           showToast('บันทึกสำเร็จ');
           document.getElementById('edit-profile-modal').classList.add('hidden');
-          renderProfile(el); // Re-render
+          renderProfile(el);
         } catch (err) { showToast(err.message, 'error'); }
         finally { btn.disabled = false; btn.textContent = 'บันทึก'; }
       });
@@ -879,7 +867,7 @@ const App = (() => {
       document.getElementById('btn-go-change-pin').addEventListener('click', () => navigate('settings'));
       document.getElementById('btn-logout-profile').addEventListener('click', Auth.logout);
     } catch (err) {
-      el.innerHTML = `<div class="error-page"><p>⚠️ ${err.message}</p><button class="btn btn-primary" onclick="App.navigate('profile')">ลองใหม่</button></div>`;
+      el.innerHTML = `<div class="error-page"><p>${mi('error')} ${err.message}</p><button class="btn btn-primary" onclick="App.navigate('profile')">ลองใหม่</button></div>`;
     }
   }
 
@@ -890,30 +878,30 @@ const App = (() => {
     el.innerHTML = `
       <div class="settings-page">
         <div class="settings-group">
-          <h3>🔑 เปลี่ยน PIN</h3>
+          <h3>${mi('key', 'mi-sm')} เปลี่ยน PIN</h3>
           <div class="form-group"><input type="password" id="old-pin" class="input-field" placeholder="PIN เดิม" inputmode="numeric" maxlength="6"></div>
           <div class="form-group"><input type="password" id="new-pin" class="input-field" placeholder="PIN ใหม่ (4-6 หลัก)" inputmode="numeric" maxlength="6"></div>
           <button class="btn btn-primary btn-full" id="btn-change-pin">เปลี่ยน PIN</button>
         </div>
         <div class="settings-group">
-          <h3>📱 LINE Notify</h3>
+          <h3>${mi('smartphone', 'mi-sm')} LINE Notify</h3>
           <p class="settings-hint">ลงทะเบียนที่ <a href="https://notify-bot.line.me/" target="_blank" rel="noopener">notify-bot.line.me</a></p>
           <div class="form-group"><input type="text" id="line-token" class="input-field" placeholder="LINE Notify Access Token"></div>
           <button class="btn btn-primary btn-full" id="btn-save-line">บันทึก LINE Token</button>
           <p id="line-status" class="settings-hint"></p>
         </div>
         <div class="settings-group">
-          <h3>🏷️ หมวดหมู่รายจ่าย</h3>
+          <h3>${mi('label', 'mi-sm')} หมวดหมู่รายจ่าย</h3>
           <div id="cats-expense-list" class="tag-list"></div>
           <div class="form-row"><input type="text" id="new-cat-expense" class="input-field" placeholder="เพิ่มหมวดหมู่"><button class="btn btn-primary" id="btn-add-cat-expense">เพิ่ม</button></div>
         </div>
         <div class="settings-group">
-          <h3>🏷️ หมวดหมู่รายรับ</h3>
+          <h3>${mi('label', 'mi-sm')} หมวดหมู่รายรับ</h3>
           <div id="cats-income-list" class="tag-list"></div>
           <div class="form-row"><input type="text" id="new-cat-income" class="input-field" placeholder="เพิ่มหมวดหมู่"><button class="btn btn-primary" id="btn-add-cat-income">เพิ่ม</button></div>
         </div>
         <div class="settings-group">
-          <button class="btn btn-danger btn-full" id="btn-logout-settings">🔒 ออกจากระบบ</button>
+          <button class="btn btn-danger btn-full" id="btn-logout-settings">${mi('logout', 'mi-sm')} ออกจากระบบ</button>
         </div>
       </div>`;
 
@@ -925,17 +913,17 @@ const App = (() => {
     });
 
     const lineStatus = document.getElementById('line-status');
-    if (settings?.hasLineToken) lineStatus.textContent = '✅ ตั้ง LINE Token แล้ว';
+    if (settings?.hasLineToken) lineStatus.innerHTML = mi('check_circle', 'mi-sm') + ' ตั้ง LINE Token แล้ว';
     document.getElementById('btn-save-line').addEventListener('click', async () => {
       const token = document.getElementById('line-token').value.trim();
       if (!token) { showToast('กรุณาใส่ Token', 'error'); return; }
-      try { await API.updateSetting('lineToken', token); showToast('บันทึกสำเร็จ'); lineStatus.textContent = '✅ ตั้ง LINE Token แล้ว'; document.getElementById('line-token').value = ''; }
+      try { await API.updateSetting('lineToken', token); showToast('บันทึกสำเร็จ'); lineStatus.innerHTML = mi('check_circle', 'mi-sm') + ' ตั้ง LINE Token แล้ว'; document.getElementById('line-token').value = ''; }
       catch (err) { showToast(err.message, 'error'); }
     });
 
     function renderCatTags(containerId, cats, type) {
       const container = document.getElementById(containerId);
-      container.innerHTML = cats.map(c => `<span class="tag">${c} <button class="tag-remove" data-cat="${c}" data-type="${type}">✕</button></span>`).join('');
+      container.innerHTML = cats.map(c => `<span class="tag">${c} <button class="tag-remove" data-cat="${c}" data-type="${type}">${mi('close', 'mi-sm')}</button></span>`).join('');
       container.querySelectorAll('.tag-remove').forEach(btn => {
         btn.addEventListener('click', async () => {
           const cat = btn.dataset.cat; const t = btn.dataset.type;

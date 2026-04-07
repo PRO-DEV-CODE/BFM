@@ -45,6 +45,23 @@ body {
 a { color: var(--accent); text-decoration: none; }
 .hidden { display: none !important; }
 
+/* ── Material Icon Helper ── */
+.mi {
+  font-family: 'Material Symbols Rounded';
+  font-weight: normal; font-style: normal;
+  font-size: 24px; line-height: 1;
+  letter-spacing: normal; text-transform: none;
+  display: inline-block; white-space: nowrap;
+  word-wrap: normal; direction: ltr;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'liga';
+  vertical-align: middle;
+}
+.mi-sm { font-size: 18px; }
+.mi-lg { font-size: 28px; }
+.mi-xl { font-size: 36px; }
+
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
@@ -617,17 +634,15 @@ textarea.input-field { resize: vertical; }
 .notif-pref-name { font-size: 0.9rem; font-weight: 500; }
 .notif-pref-desc { font-size: 0.75rem; color: var(--text-muted); }
 
-/* Emoji modal */
-.emoji-modal { max-width: 360px; }
-.emoji-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 1rem; max-height: 280px; overflow-y: auto; }
-.emoji-btn {
-  width: 100%; aspect-ratio: 1; font-size: 1.5rem;
-  background: var(--bg-input); border: 2px solid transparent;
-  border-radius: var(--radius-xs); cursor: pointer;
+/* Color picker modal */
+.color-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 1rem; }
+.color-btn {
+  width: 100%; aspect-ratio: 1; border-radius: 50%;
+  border: 3px solid transparent; cursor: pointer;
   transition: border-color .15s, transform .15s;
-  display: flex; align-items: center; justify-content: center;
 }
-.emoji-btn:hover { border-color: var(--primary); transform: scale(1.1); }
+.color-btn:hover { border-color: var(--primary); transform: scale(1.1); }
+.profile-initial { font-size: 1.5rem; font-weight: 700; color: #fff; }
 
 /* ── Settings ── */
 .settings-page { max-width: 500px; margin: 0 auto; }
