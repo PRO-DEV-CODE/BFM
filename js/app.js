@@ -327,9 +327,9 @@ const App = (() => {
 
     el.innerHTML = `
       <div class="add-page">
-        <div class="add-header-card">
+        <div class="add-header-section">
           <h2 class="add-title">บันทึกรายการ</h2>
-          <p class="add-subtitle">กรุณากรอกรายละเอียดของรายการเพื่อทำการบันทึก</p>
+          <p class="add-subtitle">กรอกรายละเอียดรายการเงินของคุณเเล้วกดบันทึก</p>
         </div>
 
         <div class="add-body-card">
@@ -347,7 +347,8 @@ const App = (() => {
             </div>
 
             <div class="add-amount-section">
-              <div class="add-amount-display" id="amount-display">${formatDisplay(editData?.amount)}</div>
+              <div class="add-amount-label">จำนวนเงิน</div>
+              <div class="add-amount-display" id="amount-display"><span class="add-currency">฿</span>${editData?.amount ? Number(editData.amount).toFixed(2) : '0.00'}</div>
               <div class="add-amount-line"></div>
               <input type="number" id="txn-amount" class="add-amount-input" placeholder="0"
                      value="${editData?.amount || ''}" inputmode="decimal" step="0.01" required>
@@ -362,7 +363,7 @@ const App = (() => {
             </div>
 
             <div class="add-section">
-              <label class="add-section-label">วันที่เดือนปี</label>
+              <label class="add-section-label">วันที่ทำรายการ</label>
               <div class="add-input-row">
                 <div class="add-input-icon">${mi('calendar_month')}</div>
                 <input type="date" id="txn-date" class="add-input-field" value="${editData?.date || getToday()}">
@@ -370,11 +371,8 @@ const App = (() => {
             </div>
 
             <div class="add-section">
-              <label class="add-section-label">รายละเอียด</label>
-              <div class="add-input-row">
-                <div class="add-input-icon">${mi('edit_note')}</div>
-                <input type="text" id="txn-desc" class="add-input-field" placeholder="บรรยายรายละเอียดเพิ่มเติม..." value="${editData?.description || ''}">
-              </div>
+              <label class="add-section-label">หมายเหตุ</label>
+              <textarea id="txn-desc" class="add-note-area" placeholder="บรรยายรายละเอียดเพิ่มเติม..." rows="3">${editData?.description || ''}</textarea>
             </div>
 
             <button type="submit" class="add-submit-btn" id="btn-save-txn">
@@ -384,13 +382,18 @@ const App = (() => {
         </div>
       </div>`;
 
+    function formatDisplay(val) {
+      if (!val || Number(val) === 0) return '<span class="add-currency">฿</span>0.00';
+      return '<span class="add-currency">฿</span>' + Number(val).toFixed(2);
+    }
+
     // Amount display sync
     const amountInput = document.getElementById('txn-amount');
     const amountDisplay = document.getElementById('amount-display');
     amountInput.addEventListener('input', () => {
-      amountDisplay.textContent = formatDisplay(amountInput.value);
+      amountDisplay.innerHTML = formatDisplay(amountInput.value);
     });
-    amountDisplay.addEventListener('click', () => amountInput.focus());
+    amountDisplay.addEventListener('click', () => { amountInput.style.pointerEvents = 'auto'; amountInput.focus(); });
 
     // Type toggle
     el.querySelectorAll('.add-toggle-btn').forEach(btn => {
@@ -434,7 +437,7 @@ const App = (() => {
         if (isEdit) { data.id = editData.id; await API.editTransaction(data); showToast('แก้ไขสำเร็จ'); navigate('history'); }
         else { await API.addTransaction(data); showToast('บันทึกสำเร็จ');
           document.getElementById('txn-amount').value = '';
-          document.getElementById('amount-display').textContent = '฿ 0.00';
+          document.getElementById('amount-display').innerHTML = '<span class="add-currency">฿</span>0.00';
           document.getElementById('txn-desc').value = '';
           document.getElementById('txn-category').value = '';
           el.querySelectorAll('.add-cat-item').forEach(b => b.classList.remove('active'));
