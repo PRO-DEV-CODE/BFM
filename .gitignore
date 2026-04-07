@@ -1,0 +1,11 @@
+# SVG source icons (PNGs are the actual assets)
+icons/*.svg
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/
+*.swp
