@@ -1,15 +1,18 @@
-const CACHE_NAME = 'bfm-v1';
+const CACHE_NAME = 'bfm-v2';
+
+// Detect base path dynamically
+const BASE = self.registration.scope;
 const STATIC_ASSETS = [
-  '/BFM/',
-  '/BFM/index.html',
-  '/BFM/manifest.json',
-  '/BFM/css/style.css',
-  '/BFM/js/app.js',
-  '/BFM/js/api.js',
-  '/BFM/js/auth.js',
-  '/BFM/js/charts.js',
-  '/BFM/icons/icon-192.png',
-  '/BFM/icons/icon-512.png'
+  BASE,
+  BASE + 'index.html',
+  BASE + 'manifest.json',
+  BASE + 'css/style.css',
+  BASE + 'js/app.js',
+  BASE + 'js/api.js',
+  BASE + 'js/auth.js',
+  BASE + 'js/charts.js',
+  BASE + 'icons/icon-192.png',
+  BASE + 'icons/icon-512.png'
 ];
 
 // Install — cache static assets
@@ -57,7 +60,7 @@ self.addEventListener('fetch', (e) => {
         return response;
       });
     }).catch(() =>
-      caches.match('/BFM/index.html')
+      caches.match(BASE + 'index.html')
     )
   );
 });

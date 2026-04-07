@@ -107,15 +107,24 @@ function handleRequest(e) {
     var p = e.parameter || {};
     var action = p.action || '';
 
-    // Parse POST JSON body if present
-    if (e.postData && e.postData.type === 'application/json') {
-      var body = JSON.parse(e.postData.contents);
-      for (var k in body) {
-        if (body.hasOwnProperty(k)) p[k] = body[k];
-      }
+    // Parse POST body (supports both application/json and text/plain)
+    if (e.postData && e.postData.contents) {
+      try {
+        var body = JSON.parse(e.postData.contents);
+        for (var k in body) {
+          if (body.hasOwnProperty(k)) p[k] = body[k];
+        }
+      } catch(parseErr) { /* ignore non-JSON body */ }
+      // Re-read action from POST body
+      action = p.action || action || '';
     }
 
-    // API secret check (skip for verifyPin, setInitialPin, ping, init)
+    // No action = health check (no auth needed)
+    if (!action) {
+      return jsonOk({ status: 'BFM API is running', version: '1.0' });
+    }
+
+    // API secret check (skip for open actions)
     var openActions = ['verifyPin','setInitialPin','ping','init','checkPinExists'];
     if (openActions.indexOf(action) === -1) {
       var secret = getSetting('apiSecret');
