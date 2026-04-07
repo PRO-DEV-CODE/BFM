@@ -167,10 +167,14 @@ const App = (() => {
             <span class="mi mi-sm" style="color:var(--text-muted);margin-left:2px">expand_more</span>
           </div>
           <div class="header-right">
-            <button class="btn-icon" id="btn-calendar-header" title="ปฏิทิน">${mi('calendar_month')}</button>
+            <button class="btn-icon header-bell" id="btn-notif-bell" title="แจ้งเตือน">
+              ${mi('notifications')}
+              <span class="bell-badge hidden" id="bell-badge">0</span>
+            </button>
           </div>
         </header>
         <div id="member-dropdown" class="member-dropdown hidden"></div>
+        <div id="notif-panel" class="notif-panel hidden"></div>
         <div id="notification-bar" class="notification-bar hidden"></div>
         <main id="main-content" class="main-content"></main>
         <nav class="bottom-nav">
@@ -196,7 +200,21 @@ const App = (() => {
       btn.addEventListener('click', () => navigate(btn.dataset.tab));
     });
     document.getElementById('btn-nav-add').addEventListener('click', () => navigate('add'));
-    document.getElementById('btn-calendar-header').addEventListener('click', () => navigate('calendar'));
+
+    // Notification bell
+    const bellBtn = document.getElementById('btn-notif-bell');
+    const notifPanel = document.getElementById('notif-panel');
+    bellBtn.addEventListener('click', () => {
+      const open = !notifPanel.classList.contains('hidden');
+      if (open) { notifPanel.classList.add('hidden'); return; }
+      renderNotifPanel();
+      notifPanel.classList.remove('hidden');
+    });
+    document.addEventListener('click', (e) => {
+      if (!bellBtn.contains(e.target) && !notifPanel.contains(e.target)) {
+        notifPanel.classList.add('hidden');
+      }
+    });
 
     // Member switcher dropdown
     const switchBtn = document.getElementById('header-member-switch');
@@ -264,18 +282,79 @@ const App = (() => {
     }
   }
 
+  let notifCache = [];
+
   async function checkNotifications() {
     try {
       const upcoming = await API.getUpcomingReminders(7);
-      if (upcoming && upcoming.length > 0) {
-        const bar = document.getElementById('notification-bar');
-        const msgs = upcoming.map(r =>
-          `${mi('warning', 'mi-sm')} ${r.name} — ครบกำหนด${r.daysLeft === 0 ? 'วันนี้!' : 'อีก ' + r.daysLeft + ' วัน'} (${formatMoney(r.amount)} ฿)`
-        );
-        bar.innerHTML = msgs.join('<br>') + `<button class="notif-close" onclick="this.parentElement.classList.add('hidden')">${mi('close', 'mi-sm')}</button>`;
-        bar.classList.remove('hidden');
-      }
-    } catch {}
+      notifCache = upcoming || [];
+      updateBellBadge();
+    } catch { notifCache = []; }
+  }
+
+  function updateBellBadge() {
+    const badge = document.getElementById('bell-badge');
+    if (!badge) return;
+    if (notifCache.length > 0) {
+      badge.textContent = notifCache.length > 9 ? '9+' : notifCache.length;
+      badge.classList.remove('hidden');
+    } else {
+      badge.classList.add('hidden');
+    }
+  }
+
+  function renderNotifPanel() {
+    const panel = document.getElementById('notif-panel');
+    if (!notifCache.length) {
+      panel.innerHTML = `
+        <div class="notif-panel-header">
+          <span class="notif-panel-title">${mi('notifications', 'mi-sm')} การแจ้งเตือน</span>
+        </div>
+        <div class="notif-panel-empty">
+          ${mi('notifications_off', 'mi-xl')}
+          <p>ไม่มีการแจ้งเตือน</p>
+        </div>`;
+      return;
+    }
+
+    const items = notifCache.map(r => {
+      const urgent = r.daysLeft === 0;
+      const warn = r.daysLeft <= 2;
+      const iconClass = urgent ? 'notif-i-urgent' : (warn ? 'notif-i-warn' : 'notif-i-normal');
+      const dueText = urgent ? 'ครบกำหนดวันนี้!' : `อีก ${r.daysLeft} วัน`;
+      return `
+        <div class="notif-item ${urgent ? 'urgent' : ''}" data-rid="${r.id}">
+          <div class="notif-i-icon ${iconClass}">
+            ${mi(urgent ? 'error' : 'schedule', 'mi-sm')}
+          </div>
+          <div class="notif-i-info">
+            <div class="notif-i-name">${r.name}</div>
+            <div class="notif-i-due">${dueText} · ${formatDate(r.dueDate)}</div>
+          </div>
+          <div class="notif-i-amount">฿${formatMoney(r.amount)}</div>
+        </div>`;
+    }).join('');
+
+    panel.innerHTML = `
+      <div class="notif-panel-header">
+        <span class="notif-panel-title">${mi('notifications', 'mi-sm')} การแจ้งเตือน</span>
+        <span class="notif-panel-count">${notifCache.length} รายการ</span>
+      </div>
+      <div class="notif-panel-list">${items}</div>
+      <div class="notif-panel-footer">
+        <button class="notif-panel-link" id="notif-go-reminders">${mi('settings', 'mi-sm')} จัดการแจ้งเตือน</button>
+      </div>`;
+
+    panel.querySelector('#notif-go-reminders')?.addEventListener('click', () => {
+      panel.classList.add('hidden');
+      navigate('reminders');
+    });
+    panel.querySelectorAll('.notif-item').forEach(el => {
+      el.addEventListener('click', () => {
+        panel.classList.add('hidden');
+        navigate('reminders');
+      });
+    });
   }
 
   // ══════════════════════════════════════
