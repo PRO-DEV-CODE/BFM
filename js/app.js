@@ -954,67 +954,157 @@ const App = (() => {
   async function renderSummary(el) {
     const month = getCurrentMonth();
     const year = new Date().getFullYear().toString();
+    const monthNames = ['','มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+
     el.innerHTML = `<div class="sum-page">
-      <div class="month-picker">
-        <button class="btn-icon" id="sum-month-prev">${mi('chevron_left')}</button>
-        <input type="month" id="sum-month-select" value="${month}" class="input-field input-month">
-        <button class="btn-icon" id="sum-month-next">${mi('chevron_right')}</button>
-      </div>
       <div id="summary-content"></div>
-      <div class="section-header"><span class="section-title">${mi('bar_chart', 'mi-sm')} ภาพรวมปี ${year}</span></div>
-      <div id="yearly-chart"></div>
+      <div id="yearly-section"></div>
     </div>`;
-    const monthInput = document.getElementById('sum-month-select');
     const content = document.getElementById('summary-content');
+    let currentMonthVal = month;
+
+    function getMonthLabel(mv) {
+      const [y, m] = mv.split('-');
+      return monthNames[parseInt(m)] + ' ' + y;
+    }
+
+    function changeMonth(dir) {
+      const d = new Date(currentMonthVal + '-01');
+      d.setMonth(d.getMonth() + dir);
+      currentMonthVal = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+      loadSummary();
+      loadYearly();
+    }
 
     async function loadSummary() {
       showLoading(content);
       try {
-        const data = await API.getMonthlySummary(monthInput.value);
+        const data = await API.getMonthlySummary(currentMonthVal);
         const balance = data.balance || 0;
+        const totalInc = data.totalIncome || 0;
+        const totalExp = data.totalExpense || 0;
         const balClass = balance >= 0 ? 'positive' : 'negative';
+        const saveRate = totalInc > 0 ? Math.round((balance / totalInc) * 100) : 0;
+
+        // Category breakdown sorted + with icons
+        const cats = (data.categoryBreakdown || []).map((c, i) => {
+          const pct = totalExp > 0 ? ((c.amount / totalExp) * 100).toFixed(1) : '0.0';
+          return { ...c, pct, rank: i + 1 };
+        });
+
         content.innerHTML = `
-          <div class="sum-balance-card ${balClass}">
-            <div class="sum-bal-label">ยอมคงเหลือ</div>
-            <div class="sum-bal-value">${balance >= 0 ? '+' : ''}${formatMoney(balance)}</div>
-            <div class="sum-bal-row">
-              <div class="sum-bal-item income">
-                <span class="sum-bal-dot"></span>
-                <span class="sum-bal-item-label">รายรับ</span>
-                <span class="sum-bal-item-val">+${formatMoney(data.totalIncome)}</span>
+          <!-- Month Navigation -->
+          <div class="sum-month-nav">
+            <button class="sum-month-btn" id="sum-prev">${mi('chevron_left')}</button>
+            <div class="sum-month-label">${getMonthLabel(currentMonthVal)}</div>
+            <button class="sum-month-btn" id="sum-next">${mi('chevron_right')}</button>
+          </div>
+
+          <!-- Hero Balance Card -->
+          <div class="sum-hero">
+            <div class="sum-hero-top">
+              <div class="sum-hero-label">ยอมคงเหลือประจำเดือน</div>
+              <div class="sum-hero-amount ${balClass}">${balance >= 0 ? '+' : ''}฿${formatMoney(Math.abs(balance))}</div>
+              ${totalInc > 0 ? `<div class="sum-hero-rate ${balClass}">
+                ${mi(balance >= 0 ? 'trending_up' : 'trending_down', 'mi-sm')}
+                <span>ออมได้ ${saveRate}% ของรายรับ</span>
+              </div>` : ''}
+            </div>
+          </div>
+
+          <!-- Income / Expense Cards -->
+          <div class="sum-ie-row">
+            <div class="sum-ie-card income">
+              <div class="sum-ie-icon-wrap income">${mi('south_west')}</div>
+              <div class="sum-ie-info">
+                <div class="sum-ie-label">รายรับ</div>
+                <div class="sum-ie-value income">+฿${formatMoney(totalInc)}</div>
               </div>
-              <div class="sum-bal-item expense">
-                <span class="sum-bal-dot"></span>
-                <span class="sum-bal-item-label">รายจ่าย</span>
-                <span class="sum-bal-item-val">-${formatMoney(data.totalExpense)}</span>
+            </div>
+            <div class="sum-ie-card expense">
+              <div class="sum-ie-icon-wrap expense">${mi('north_east')}</div>
+              <div class="sum-ie-info">
+                <div class="sum-ie-label">รายจ่าย</div>
+                <div class="sum-ie-value expense">-฿${formatMoney(totalExp)}</div>
               </div>
             </div>
           </div>
+
+          <!-- Donut Breakdown -->
           <div class="sum-breakdown-card">
             <div class="sum-breakdown-header">
               <div>
-                <div class="sum-breakdown-title">Content Breakdown</div>
-                <div class="sum-breakdown-sub">สัดส่วนรายจ่ายตามหมวด</div>
+                <div class="sum-breakdown-title">${mi('donut_large', 'mi-sm')} สัดส่วนรายจ่าย</div>
+                <div class="sum-breakdown-sub">แยกตามหมวดหมู่</div>
               </div>
             </div>
             <div id="category-donut"></div>
-          </div>`;
-        const totalExp = data.totalExpense || 0;
+          </div>
+
+          <!-- Category Ranking -->
+          ${cats.length ? `
+          <div class="sum-ranking-card">
+            <div class="sum-ranking-title">${mi('leaderboard', 'mi-sm')} อันดับรายจ่าย</div>
+            <div class="sum-ranking-list">
+              ${cats.map(c => `
+                <div class="sum-rank-item">
+                  <div class="sum-rank-num">${c.rank}</div>
+                  <div class="sum-rank-icon" style="background:${getCatColor(c.category)}20;color:${getCatColor(c.category)}">
+                    ${mi(getCatIconName(c.category), 'mi-sm')}
+                  </div>
+                  <div class="sum-rank-info">
+                    <div class="sum-rank-name">${c.category}</div>
+                    <div class="sum-rank-bar-track">
+                      <div class="sum-rank-bar-fill" style="width:${c.pct}%;background:${getCatColor(c.category)}"></div>
+                    </div>
+                  </div>
+                  <div class="sum-rank-right">
+                    <div class="sum-rank-amount">฿${formatMoney(c.amount)}</div>
+                    <div class="sum-rank-pct">${c.pct}%</div>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>` : ''}
+        `;
+
         Charts.donutChart(document.getElementById('category-donut'), data.categoryBreakdown, {
-          size: 200,
-          centerLabel: '100%',
+          size: 200, strokeWidth: 30,
+          centerLabel: totalExp > 0 ? '฿' + formatMoney(totalExp) : '฿0',
           centerSub: 'TOTAL EXPENSE'
         });
-      } catch (err) { content.innerHTML = `<div class="error-page"><p>${mi('error')} ${err.message}</p></div>`; }
+
+        document.getElementById('sum-prev').addEventListener('click', () => changeMonth(-1));
+        document.getElementById('sum-next').addEventListener('click', () => changeMonth(1));
+      } catch (err) {
+        content.innerHTML = `<div class="error-page"><p>${mi('error')} ${err.message}</p></div>`;
+      }
     }
+
     async function loadYearly() {
-      const yearlyEl = document.getElementById('yearly-chart');
-      try { const yearVal = monthInput.value.split('-')[0]; const yearlyData = await API.getYearlySummary(yearVal); Charts.barChart(yearlyEl, yearlyData); } catch {}
+      const yearlyEl = document.getElementById('yearly-section');
+      try {
+        const yearVal = currentMonthVal.split('-')[0];
+        const yearlyData = await API.getYearlySummary(yearVal);
+        const totalYearInc = yearlyData.reduce((s, d) => s + (d.totalIncome || 0), 0);
+        const totalYearExp = yearlyData.reduce((s, d) => s + (d.totalExpense || 0), 0);
+        yearlyEl.innerHTML = `
+          <div class="sum-yearly-card">
+            <div class="sum-yearly-header">
+              <div class="sum-yearly-title">${mi('bar_chart', 'mi-sm')} ภาพรวมปี ${yearVal}</div>
+              <div class="sum-yearly-totals">
+                <span class="sum-yt income">+฿${formatMoney(totalYearInc)}</span>
+                <span class="sum-yt expense">-฿${formatMoney(totalYearExp)}</span>
+              </div>
+            </div>
+            <div id="yearly-chart"></div>
+          </div>`;
+        Charts.barChart(document.getElementById('yearly-chart'), yearlyData);
+      } catch {}
     }
-    monthInput.addEventListener('change', () => { loadSummary(); loadYearly(); });
-    document.getElementById('sum-month-prev').addEventListener('click', () => { const d = new Date(monthInput.value + '-01'); d.setMonth(d.getMonth() - 1); monthInput.value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); loadSummary(); loadYearly(); });
-    document.getElementById('sum-month-next').addEventListener('click', () => { const d = new Date(monthInput.value + '-01'); d.setMonth(d.getMonth() + 1); monthInput.value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); loadSummary(); loadYearly(); });
-    loadSummary(); loadYearly();
+
+    loadSummary();
+    loadYearly();
   }
 
   // ══════════════════════════════════════

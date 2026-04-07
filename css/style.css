@@ -967,40 +967,150 @@ textarea.input-field { resize: vertical; }
 .card-balance.negative .card-value { color: var(--danger); }
 .top-cat { color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem; }
 
-/* ── Summary Page (Banking Style) ── */
+/* ── Summary Page (Premium Banking) ── */
 .sum-page { padding-top: 4px; }
-.sum-balance-card {
-  background: var(--bg-white); border-radius: var(--radius);
-  padding: 20px; box-shadow: var(--shadow); margin-bottom: 14px;
-  text-align: center;
-}
-.sum-balance-card.positive { border-top: 3px solid var(--success); }
-.sum-balance-card.negative { border-top: 3px solid var(--danger); }
-.sum-bal-label { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px; }
-.sum-bal-value { font-size: 1.6rem; font-weight: 700; margin-bottom: 14px; }
-.sum-balance-card.positive .sum-bal-value { color: var(--success); }
-.sum-balance-card.negative .sum-bal-value { color: var(--danger); }
-.sum-bal-row { display: flex; gap: 10px; }
-.sum-bal-item {
-  flex: 1; display: flex; align-items: center; gap: 8px;
-  background: var(--bg); border-radius: var(--radius-sm);
-  padding: 10px 12px; font-size: 0.8rem;
-}
-.sum-bal-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-.sum-bal-item.income .sum-bal-dot { background: var(--income); }
-.sum-bal-item.expense .sum-bal-dot { background: var(--expense); }
-.sum-bal-item-label { color: var(--text-muted); font-size: 0.7rem; }
-.sum-bal-item-val { margin-left: auto; font-weight: 600; font-size: 0.8rem; }
-.sum-bal-item.income .sum-bal-item-val { color: var(--income); }
-.sum-bal-item.expense .sum-bal-item-val { color: var(--expense); }
 
+/* Month Nav */
+.sum-month-nav {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 16px;
+}
+.sum-month-btn {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: var(--bg-white); border: 1.5px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-secondary); cursor: pointer; transition: all 0.15s;
+}
+.sum-month-btn:active { background: var(--bg-input); transform: scale(0.93); }
+.sum-month-label {
+  font-size: 1.05rem; font-weight: 700; color: var(--text);
+  letter-spacing: -0.01em;
+}
+
+/* Hero Balance */
+.sum-hero {
+  background: var(--primary-gradient); border-radius: var(--radius);
+  padding: 24px 20px; margin-bottom: 14px;
+  position: relative; overflow: hidden;
+  box-shadow: 0 8px 32px rgba(26,58,107,0.3);
+}
+.sum-hero::after {
+  content: ''; position: absolute; right: -40px; top: -40px;
+  width: 140px; height: 140px; border-radius: 50%;
+  background: rgba(255,255,255,0.06);
+}
+.sum-hero::before {
+  content: ''; position: absolute; left: -20px; bottom: -30px;
+  width: 100px; height: 100px; border-radius: 50%;
+  background: rgba(255,255,255,0.04);
+}
+.sum-hero-top { position: relative; z-index: 1; text-align: center; }
+.sum-hero-label {
+  font-size: 0.75rem; color: rgba(255,255,255,0.7);
+  margin-bottom: 6px; letter-spacing: 0.02em;
+}
+.sum-hero-amount {
+  font-size: 2rem; font-weight: 700; color: #fff;
+  letter-spacing: -0.02em; margin-bottom: 8px;
+}
+.sum-hero-amount.negative { color: #fca5a5; }
+.sum-hero-rate {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 14px; border-radius: 20px;
+  font-size: 0.72rem; font-weight: 600;
+}
+.sum-hero-rate.positive {
+  background: rgba(34,197,94,0.2); color: #86efac;
+}
+.sum-hero-rate.negative {
+  background: rgba(239,68,68,0.2); color: #fca5a5;
+}
+
+/* Income / Expense Row */
+.sum-ie-row { display: flex; gap: 10px; margin-bottom: 14px; }
+.sum-ie-card {
+  flex: 1; display: flex; align-items: center; gap: 12px;
+  background: var(--bg-white); border-radius: var(--radius-sm);
+  padding: 16px 14px; box-shadow: var(--shadow);
+}
+.sum-ie-icon-wrap {
+  width: 42px; height: 42px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem; flex-shrink: 0;
+}
+.sum-ie-icon-wrap.income { background: var(--income-bg); color: var(--income); }
+.sum-ie-icon-wrap.expense { background: var(--expense-bg); color: var(--expense); }
+.sum-ie-info { flex: 1; min-width: 0; }
+.sum-ie-label { font-size: 0.7rem; color: var(--text-muted); margin-bottom: 2px; }
+.sum-ie-value { font-size: 1rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sum-ie-value.income { color: var(--income); }
+.sum-ie-value.expense { color: var(--expense); }
+
+/* Breakdown Card */
 .sum-breakdown-card {
   background: var(--bg-white); border-radius: var(--radius);
-  padding: 20px; box-shadow: var(--shadow); margin-bottom: 16px;
+  padding: 20px; box-shadow: var(--shadow); margin-bottom: 14px;
 }
 .sum-breakdown-header { margin-bottom: 12px; }
-.sum-breakdown-title { font-size: 1rem; font-weight: 700; color: var(--text); }
-.sum-breakdown-sub { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+.sum-breakdown-title {
+  font-size: 1rem; font-weight: 700; color: var(--text);
+  display: flex; align-items: center; gap: 4px;
+}
+.sum-breakdown-sub { font-size: 0.72rem; color: var(--text-muted); margin-top: 2px; }
+
+/* Category Ranking */
+.sum-ranking-card {
+  background: var(--bg-white); border-radius: var(--radius);
+  padding: 20px; box-shadow: var(--shadow); margin-bottom: 14px;
+}
+.sum-ranking-title {
+  font-size: 1rem; font-weight: 700; color: var(--text);
+  display: flex; align-items: center; gap: 4px;
+  margin-bottom: 14px;
+}
+.sum-ranking-list { display: flex; flex-direction: column; gap: 12px; }
+.sum-rank-item {
+  display: flex; align-items: center; gap: 10px;
+}
+.sum-rank-num {
+  width: 22px; height: 22px; border-radius: 6px;
+  background: var(--bg-input); display: flex; align-items: center;
+  justify-content: center; font-size: 0.7rem; font-weight: 700;
+  color: var(--text-secondary); flex-shrink: 0;
+}
+.sum-rank-item:first-child .sum-rank-num {
+  background: var(--primary); color: #fff;
+}
+.sum-rank-icon {
+  width: 36px; height: 36px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.sum-rank-info { flex: 1; min-width: 0; }
+.sum-rank-name { font-size: 0.82rem; font-weight: 500; margin-bottom: 4px; }
+.sum-rank-bar-track {
+  height: 5px; background: var(--bg-input); border-radius: 3px;
+  overflow: hidden;
+}
+.sum-rank-bar-fill { height: 100%; border-radius: 3px; transition: width 0.4s; }
+.sum-rank-right { text-align: right; flex-shrink: 0; }
+.sum-rank-amount { font-size: 0.82rem; font-weight: 700; color: var(--text); }
+.sum-rank-pct { font-size: 0.65rem; color: var(--text-muted); }
+
+/* Yearly Card */
+.sum-yearly-card {
+  background: var(--bg-white); border-radius: var(--radius);
+  padding: 20px; box-shadow: var(--shadow); margin-bottom: 14px;
+}
+.sum-yearly-header { margin-bottom: 10px; }
+.sum-yearly-title {
+  font-size: 1rem; font-weight: 700; color: var(--text);
+  display: flex; align-items: center; gap: 4px;
+  margin-bottom: 4px;
+}
+.sum-yearly-totals { display: flex; gap: 12px; font-size: 0.78rem; font-weight: 600; }
+.sum-yt.income { color: var(--income); }
+.sum-yt.expense { color: var(--expense); }
 
 /* Donut Chart */
 .donut-wrapper { display: flex; flex-direction: column; align-items: center; gap: 1rem; }
