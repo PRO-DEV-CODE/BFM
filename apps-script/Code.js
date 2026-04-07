@@ -10,6 +10,7 @@ const SH_TRANSACTIONS = 'Transactions';
 const SH_REMINDERS = 'Reminders';
 const SH_SETTINGS = 'Settings';
 const SH_SUMMARY = 'MonthlySummary';
+const SH_PROFILE = 'Profile';
 
 // ── Default Categories ──
 const DEFAULT_EXPENSE_CATS = JSON.stringify([
@@ -70,6 +71,8 @@ function initSheets() {
   getOrCreateSheet(SH_SETTINGS, ['key','value']);
   getOrCreateSheet(SH_SUMMARY,
     ['yearMonth','totalIncome','totalExpense','balance','topCategory']);
+  getOrCreateSheet(SH_PROFILE,
+    ['key','value']);
 
   // Seed default settings if empty
   const settingsSheet = getSpreadsheet().getSheetByName(SH_SETTINGS);
@@ -165,6 +168,10 @@ function handleRequest(e) {
 
       // -- Notifications --
       case 'getUpcomingReminders': return getUpcomingReminders(Number(p.days) || 7);
+
+      // -- Profile --
+      case 'getProfile':       return getProfileApi();
+      case 'updateProfile':    return updateProfileApi(p);
 
       default:
         return jsonErr('Unknown action: ' + action);
@@ -667,4 +674,38 @@ function setupDailyTrigger() {
     .everyDays(1)
     .atHour(8)
     .create();
+}
+
+// ══════════════════════════════════════
+// PROFILE
+// ══════════════════════════════════════
+function getProfileApi() {
+  var sheet = getSpreadsheet().getSheetByName(SH_PROFILE);
+  if (!sheet) return jsonOk({});
+  var data = sheet.getDataRange().getValues();
+  var profile = {};
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0]) profile[data[i][0]] = data[i][1];
+  }
+  return jsonOk(profile);
+}
+
+function updateProfileApi(p) {
+  var sheet = getOrCreateSheet(SH_PROFILE, ['key', 'value']);
+  var allowed = ['displayName', 'nickname', 'email', 'phone', 'birthday', 'avatarEmoji', 'bio'];
+  var data = sheet.getDataRange().getValues();
+  var keys = data.map(function(r) { return r[0]; });
+  var updated = [];
+  for (var k = 0; k < allowed.length; k++) {
+    var key = allowed[k];
+    if (p[key] === undefined) continue;
+    var idx = keys.indexOf(key);
+    if (idx >= 0) {
+      sheet.getRange(idx + 1, 2).setValue(p[key]);
+    } else {
+      sheet.appendRow([key, p[key]]);
+    }
+    updated.push(key);
+  }
+  return jsonOk({ updated: updated });
 }

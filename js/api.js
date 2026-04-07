@@ -3,7 +3,7 @@
 // ====================================================
 
 const API = (() => {
-  const DEFAULT_URL = 'https://script.google.com/macros/s/AKfycbzCaRpG0myGUhNkCYR6yBB1_rZSVL4u3DRjM45_njPTWnr9_Mj7f0yq4Dzi4NOlm4jtqA/exec';
+  const DEFAULT_URL = 'https://script.google.com/macros/s/AKfycbwoD3-f7eKlOX8RuLdlZyA5-GWnxpxJd3rHmJvGZ-K3DLRHGYHhb3GQD1WuO9g3iCn2IQ/exec';
   let BASE_URL = localStorage.getItem('bfm_api_url') || DEFAULT_URL;
   let SECRET = sessionStorage.getItem('bfm_secret') || '';
 
@@ -21,9 +21,9 @@ const API = (() => {
   function clearCache() { Object.keys(_cache).forEach(k => delete _cache[k]); }
 
   // Actions that are read-only and safe to cache
-  const CACHEABLE = ['getTransactions', 'getReminders', 'getMonthlySummary', 'getYearlySummary', 'getSettings', 'getUpcomingReminders', 'checkPinExists'];
+  const CACHEABLE = ['getTransactions', 'getReminders', 'getMonthlySummary', 'getYearlySummary', 'getSettings', 'getUpcomingReminders', 'checkPinExists', 'getProfile'];
   // Actions that invalidate cache
-  const WRITE_ACTIONS = ['addTransaction', 'editTransaction', 'deleteTransaction', 'addReminder', 'updateReminder', 'deleteReminder', 'toggleReminder', 'updateSetting', 'setInitialPin', 'changePin'];
+  const WRITE_ACTIONS = ['addTransaction', 'editTransaction', 'deleteTransaction', 'addReminder', 'updateReminder', 'deleteReminder', 'toggleReminder', 'updateSetting', 'setInitialPin', 'changePin', 'updateProfile'];
 
   function setBaseUrl(url) {
     BASE_URL = url.replace(/\/+$/, '');
@@ -120,6 +120,10 @@ const API = (() => {
   const getSettings = () => call('getSettings');
   const updateSetting = (key, value) => call('updateSetting', { key, value });
 
+  // ── Profile ──
+  const getProfile = () => call('getProfile');
+  const updateProfile = (data) => call('updateProfile', data);
+
   // ── Init ──
   const ping = () => call('ping');
   const init = () => call('init');
@@ -131,6 +135,7 @@ const API = (() => {
     addReminder, getReminders, updateReminder, deleteReminder, toggleReminder, getUpcomingReminders,
     getMonthlySummary, getYearlySummary,
     getSettings, updateSetting,
+    getProfile, updateProfile,
     ping, init
   };
 })();

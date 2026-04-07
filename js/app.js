@@ -87,6 +87,9 @@ const App = (() => {
           <button class="nav-btn" data-tab="summary">
             <span class="nav-icon">📊</span><span class="nav-label">สรุป</span>
           </button>
+          <button class="nav-btn" data-tab="profile">
+            <span class="nav-icon">👤</span><span class="nav-label">โปรไฟล์</span>
+          </button>
           <button class="nav-btn" data-tab="settings">
             <span class="nav-icon">⚙️</span><span class="nav-label">ตั้งค่า</span>
           </button>
@@ -107,7 +110,7 @@ const App = (() => {
 
     const titles = {
       dashboard: 'BFM', add: 'เพิ่มรายการ', transactions: 'รายการทั้งหมด',
-      reminders: 'แจ้งเตือน', summary: 'สรุปรายเดือน', settings: 'ตั้งค่า'
+      reminders: 'แจ้งเตือน', summary: 'สรุปรายเดือน', profile: 'โปรไฟล์', settings: 'ตั้งค่า'
     };
     document.getElementById('page-title').textContent = titles[tab] || 'BFM';
 
@@ -118,6 +121,7 @@ const App = (() => {
       case 'transactions': renderTransactions(main); break;
       case 'reminders': renderReminders(main); break;
       case 'summary': renderSummary(main); break;
+      case 'profile': renderProfile(main); break;
       case 'settings': renderSettings(main); break;
     }
   }
@@ -671,6 +675,184 @@ const App = (() => {
 
     loadSummary();
     loadYearly();
+  }
+
+  // ══════════════════════════════════════
+  // PROFILE
+  // ══════════════════════════════════════
+  async function renderProfile(el) {
+    showLoading(el);
+    try {
+      const profile = await API.getProfile();
+      const emoji = profile.avatarEmoji || '👤';
+      const name = profile.displayName || '';
+      const nick = profile.nickname || '';
+
+      el.innerHTML = `
+        <div class="profile-page">
+          <div class="profile-header">
+            <div class="profile-avatar" id="avatar-picker">${emoji}</div>
+            <div class="profile-name-display">
+              <span class="profile-display-name">${name || 'ยังไม่ได้ตั้งชื่อ'}</span>
+              ${nick ? `<span class="profile-nickname">@${nick}</span>` : ''}
+            </div>
+          </div>
+
+          <div class="profile-stats">
+            <div class="stat-item">
+              <span class="stat-value" id="stat-total-txn">-</span>
+              <span class="stat-label">รายการ</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-value" id="stat-this-month">-</span>
+              <span class="stat-label">เดือนนี้</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-value" id="stat-reminders">-</span>
+              <span class="stat-label">แจ้งเตือน</span>
+            </div>
+          </div>
+
+          <div class="profile-section">
+            <h3 class="section-title">📝 ข้อมูลส่วนตัว</h3>
+            <form id="profile-form" class="form">
+              <div class="form-group">
+                <label>ชื่อแสดง</label>
+                <input type="text" id="pf-name" class="input-field" placeholder="ชื่อ-สกุล" value="${name}">
+              </div>
+              <div class="form-group">
+                <label>ชื่อเล่น</label>
+                <input type="text" id="pf-nick" class="input-field" placeholder="ชื่อเล่น" value="${nick}">
+              </div>
+              <div class="form-group">
+                <label>อีเมล</label>
+                <input type="email" id="pf-email" class="input-field" placeholder="email@example.com" value="${profile.email || ''}">
+              </div>
+              <div class="form-group">
+                <label>เบอร์โทร</label>
+                <input type="tel" id="pf-phone" class="input-field" placeholder="0xx-xxx-xxxx" value="${profile.phone || ''}">
+              </div>
+              <div class="form-group">
+                <label>วันเกิด</label>
+                <input type="date" id="pf-birthday" class="input-field" value="${profile.birthday || ''}">
+              </div>
+              <div class="form-group">
+                <label>เกี่ยวกับตัวเอง</label>
+                <textarea id="pf-bio" class="input-field" rows="3" placeholder="เป้าหมายการเงิน, คำอธิบายสั้นๆ...">${profile.bio || ''}</textarea>
+              </div>
+              <button type="submit" class="btn btn-primary btn-full" id="btn-save-profile">💾 บันทึกโปรไฟล์</button>
+            </form>
+          </div>
+
+          <div class="profile-section">
+            <h3 class="section-title">🔐 ความปลอดภัย</h3>
+            <div class="security-item">
+              <div class="security-info">
+                <span class="security-label">PIN เข้าใช้งาน</span>
+                <span class="security-status">✅ ตั้งค่าแล้ว</span>
+              </div>
+              <button class="btn btn-outline btn-sm" id="btn-go-change-pin">เปลี่ยน PIN</button>
+            </div>
+          </div>
+
+          <div class="profile-section">
+            <button class="btn btn-danger btn-full" id="btn-logout-profile">🔒 ออกจากระบบ</button>
+          </div>
+        </div>
+
+        <div id="emoji-modal" class="form-overlay hidden">
+          <div class="form-modal emoji-modal">
+            <h3>เลือกอิโมจิโปรไฟล์</h3>
+            <div class="emoji-grid">${
+              ['👤','👨','👩','👦','👧','🧑','👨‍💼','👩‍💼','🧑‍💻','👨‍🎓','👩‍🎓','🦸','🦸‍♂️','🦸‍♀️',
+               '😀','😎','🤓','🥳','😊','🤩','🐱','🐶','🦊','🐻','🐼','🦁','🐯','🐸',
+               '💰','💎','🏦','📊','🎯','🚀','⭐','🌟','💜','💙','💚','❤️'].map(e =>
+                `<button type="button" class="emoji-btn" data-emoji="${e}">${e}</button>`
+              ).join('')}
+            </div>
+            <button class="btn btn-outline btn-full" id="btn-close-emoji">ปิด</button>
+          </div>
+        </div>`;
+
+      // Load stats in background
+      loadProfileStats();
+
+      // Emoji picker
+      document.getElementById('avatar-picker').addEventListener('click', () => {
+        document.getElementById('emoji-modal').classList.remove('hidden');
+      });
+      document.getElementById('btn-close-emoji').addEventListener('click', () => {
+        document.getElementById('emoji-modal').classList.add('hidden');
+      });
+      document.querySelectorAll('.emoji-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const em = btn.dataset.emoji;
+          document.getElementById('avatar-picker').textContent = em;
+          document.getElementById('emoji-modal').classList.add('hidden');
+          try {
+            await API.updateProfile({ avatarEmoji: em });
+          } catch {}
+        });
+      });
+
+      // Save profile
+      document.getElementById('profile-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('btn-save-profile');
+        btn.disabled = true;
+        btn.textContent = 'กำลังบันทึก...';
+        try {
+          await API.updateProfile({
+            displayName: document.getElementById('pf-name').value.trim(),
+            nickname: document.getElementById('pf-nick').value.trim(),
+            email: document.getElementById('pf-email').value.trim(),
+            phone: document.getElementById('pf-phone').value.trim(),
+            birthday: document.getElementById('pf-birthday').value,
+            bio: document.getElementById('pf-bio').value.trim()
+          });
+          // Update header display
+          const nameVal = document.getElementById('pf-name').value.trim();
+          const nickVal = document.getElementById('pf-nick').value.trim();
+          el.querySelector('.profile-display-name').textContent = nameVal || 'ยังไม่ได้ตั้งชื่อ';
+          const nickEl = el.querySelector('.profile-nickname');
+          if (nickEl) nickEl.textContent = nickVal ? '@' + nickVal : '';
+          showToast('บันทึกโปรไฟล์สำเร็จ');
+        } catch (err) {
+          showToast(err.message, 'error');
+        } finally {
+          btn.disabled = false;
+          btn.textContent = '💾 บันทึกโปรไฟล์';
+        }
+      });
+
+      // Change PIN → go to settings
+      document.getElementById('btn-go-change-pin').addEventListener('click', () => navigate('settings'));
+
+      // Logout
+      document.getElementById('btn-logout-profile').addEventListener('click', Auth.logout);
+
+    } catch (err) {
+      el.innerHTML = `<div class="error-page"><p>⚠️ ${err.message}</p><button class="btn btn-primary" onclick="App.navigate('profile')">ลองใหม่</button></div>`;
+    }
+  }
+
+  async function loadProfileStats() {
+    try {
+      const month = getCurrentMonth();
+      const [txns, reminders] = await Promise.all([
+        API.getTransactions(month),
+        API.getReminders()
+      ]);
+      const totalEl = document.getElementById('stat-total-txn');
+      const monthEl = document.getElementById('stat-this-month');
+      const remEl = document.getElementById('stat-reminders');
+      if (totalEl) totalEl.textContent = (txns || []).length;
+      if (monthEl) {
+        const exp = (txns || []).filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+        monthEl.textContent = formatMoney(exp) + '฿';
+      }
+      if (remEl) remEl.textContent = (reminders || []).filter(r => r.active).length;
+    } catch {}
   }
 
   // ══════════════════════════════════════
