@@ -4,8 +4,8 @@
 
 const Charts = (() => {
   const COLORS = [
-    '#6C63FF', '#FF6B6B', '#4ECDC4', '#FFE66D', '#A8E6CF',
-    '#FF8A5C', '#EA5455', '#7367F0', '#28C76F', '#FF9F43'
+    '#1a3a6b', '#3b82f6', '#22c55e', '#f59e0b', '#ef4444',
+    '#8b5cf6', '#06b6d4', '#f97316', '#6366f1', '#ec4899'
   ];
 
   function pieChart(container, data, options = {}) {

@@ -1,97 +1,113 @@
 // ====================================================
-// BFM App — Main Controller & Routing
+// BFM App — Banking UI Controller
 // ====================================================
 
 const App = (() => {
-  let currentTab = 'dashboard';
+  let currentTab = 'home';
   let settings = null;
+  let profileCache = null;
 
   // ── Format Helpers ──
-  function formatMoney(n) {
-    return Number(n || 0).toLocaleString('th-TH');
-  }
-
+  function formatMoney(n) { return Number(n || 0).toLocaleString('th-TH'); }
   function formatDate(d) {
     if (!d) return '';
     const parts = d.split('-');
     if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
     return d;
   }
-
   function getCurrentMonth() {
     const d = new Date();
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
   }
-
   function getToday() {
     const d = new Date();
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   }
-
   function showLoading(el) {
     el.innerHTML = '<div class="loading"><div class="spinner"></div><p>กำลังโหลด...</p></div>';
   }
-
   function showToast(msg, type = 'success') {
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
     toast.textContent = msg;
     document.body.appendChild(toast);
     setTimeout(() => toast.classList.add('show'), 10);
-    setTimeout(() => {
-      toast.classList.remove('show');
-      setTimeout(() => toast.remove(), 300);
-    }, 2500);
+    setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 2500);
   }
+
+  const CAT_ICONS = {
+    'อาหาร': '🍽️', 'ค่าเดินทาง': '🚗', 'ค่าบัตรเครดิต': '💳',
+    'พรบ./ประกัน': '📄', 'ค่าน้ำ/ไฟ/เน็ต': '💡', 'ช้อปปิ้ง': '🛍️',
+    'สุขภาพ': '❤️', 'การศึกษา': '📚', 'อื่นๆ': '📦',
+    'เงินเดือน': '💰', 'งานเสริม': '💼', 'ลงทุน': '📈'
+  };
+  const CAT_COLORS = {
+    'อาหาร': '#f59e0b', 'ค่าเดินทาง': '#3b82f6', 'ค่าบัตรเครดิต': '#8b5cf6',
+    'พรบ./ประกัน': '#6366f1', 'ค่าน้ำ/ไฟ/เน็ต': '#06b6d4', 'ช้อปปิ้ง': '#ef4444',
+    'สุขภาพ': '#22c55e', 'การศึกษา': '#f97316', 'อื่นๆ': '#94a3b8',
+    'เงินเดือน': '#22c55e', 'งานเสริม': '#3b82f6', 'ลงทุน': '#8b5cf6'
+  };
+  const CAT_BG = {
+    'อาหาร': 'food', 'ค่าเดินทาง': 'transport', 'ช้อปปิ้ง': 'shopping',
+    'ค่าน้ำ/ไฟ/เน็ต': 'bills', 'สุขภาพ': 'health'
+  };
+
+  function getCatIcon(cat) { return CAT_ICONS[cat] || '📦'; }
+  function getCatColor(cat) { return CAT_COLORS[cat] || '#94a3b8'; }
+  function getCatBg(cat) { return CAT_BG[cat] || 'other'; }
 
   // ══════════════════════════════════════
   // INIT
   // ══════════════════════════════════════
   async function init() {
     const app = document.getElementById('app');
-
-    // Auth flow
     Auth.startAuthFlow(app, async () => {
-      // Authenticated — render main UI immediately
       app.innerHTML = renderShell();
       bindNav();
-      navigate('dashboard');
-      // Load settings & notifications in background
-      API.getSettings().then(s => settings = s).catch(() => settings = {});
+      navigate('home');
+      // Load in background
+      Promise.all([
+        API.getSettings().then(s => settings = s).catch(() => settings = {}),
+        API.getProfile().then(p => { profileCache = p; updateHeaderAvatar(); }).catch(() => {})
+      ]);
       checkNotifications();
     });
+  }
+
+  function updateHeaderAvatar() {
+    const el = document.getElementById('header-avatar');
+    if (el && profileCache) {
+      el.textContent = profileCache.avatarEmoji || '👤';
+    }
   }
 
   function renderShell() {
     return `
       <div class="app-shell">
         <header class="app-header">
-          <h1 id="page-title">BFM</h1>
-          <button class="btn-icon" id="btn-logout" title="ออกจากระบบ">🔒</button>
+          <div class="header-left">
+            <div class="header-avatar" id="header-avatar">👤</div>
+            <span class="header-title">BFM</span>
+          </div>
+          <div class="header-right">
+            <button class="btn-icon" id="btn-calendar-header" title="ปฏิทิน">📅</button>
+          </div>
         </header>
         <div id="notification-bar" class="notification-bar hidden"></div>
         <main id="main-content" class="main-content"></main>
         <nav class="bottom-nav">
-          <button class="nav-btn active" data-tab="dashboard">
-            <span class="nav-icon">🏠</span><span class="nav-label">หน้าหลัก</span>
+          <button class="nav-btn active" data-tab="home">
+            <span class="nav-icon">🏠</span><span class="nav-label">HOME</span>
           </button>
-          <button class="nav-btn" data-tab="add">
-            <span class="nav-icon">➕</span><span class="nav-label">เพิ่ม</span>
+          <button class="nav-btn" data-tab="history">
+            <span class="nav-icon">🕐</span><span class="nav-label">HISTORY</span>
           </button>
-          <button class="nav-btn" data-tab="transactions">
-            <span class="nav-icon">📋</span><span class="nav-label">รายการ</span>
-          </button>
-          <button class="nav-btn" data-tab="reminders">
-            <span class="nav-icon">🔔</span><span class="nav-label">แจ้งเตือน</span>
-          </button>
-          <button class="nav-btn" data-tab="summary">
-            <span class="nav-icon">📊</span><span class="nav-label">สรุป</span>
+          <button class="nav-btn-add" id="btn-nav-add">+</button>
+          <button class="nav-btn" data-tab="calendar">
+            <span class="nav-icon">📅</span><span class="nav-label">CALENDAR</span>
           </button>
           <button class="nav-btn" data-tab="profile">
-            <span class="nav-icon">👤</span><span class="nav-label">โปรไฟล์</span>
-          </button>
-          <button class="nav-btn" data-tab="settings">
-            <span class="nav-icon">⚙️</span><span class="nav-label">ตั้งค่า</span>
+            <span class="nav-icon">👤</span><span class="nav-label">PROFILE</span>
           </button>
         </nav>
       </div>`;
@@ -101,32 +117,27 @@ const App = (() => {
     document.querySelectorAll('.nav-btn').forEach(btn => {
       btn.addEventListener('click', () => navigate(btn.dataset.tab));
     });
-    document.getElementById('btn-logout').addEventListener('click', Auth.logout);
+    document.getElementById('btn-nav-add').addEventListener('click', () => navigate('add'));
+    document.getElementById('btn-calendar-header').addEventListener('click', () => navigate('calendar'));
+    document.getElementById('header-avatar').addEventListener('click', () => navigate('profile'));
   }
 
   function navigate(tab) {
     currentTab = tab;
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
-
-    const titles = {
-      dashboard: 'BFM', add: 'เพิ่มรายการ', transactions: 'รายการทั้งหมด',
-      reminders: 'แจ้งเตือน', summary: 'สรุปรายเดือน', profile: 'โปรไฟล์', settings: 'ตั้งค่า'
-    };
-    document.getElementById('page-title').textContent = titles[tab] || 'BFM';
-
     const main = document.getElementById('main-content');
     switch (tab) {
-      case 'dashboard': renderDashboard(main); break;
+      case 'home': renderHome(main); break;
+      case 'history': renderHistory(main); break;
       case 'add': renderAddTransaction(main); break;
-      case 'transactions': renderTransactions(main); break;
-      case 'reminders': renderReminders(main); break;
-      case 'summary': renderSummary(main); break;
+      case 'calendar': renderCalendar(main); break;
       case 'profile': renderProfile(main); break;
       case 'settings': renderSettings(main); break;
+      case 'reminders': renderReminders(main); break;
+      case 'summary': renderSummary(main); break;
     }
   }
 
-  // ── Notifications Banner ──
   async function checkNotifications() {
     try {
       const upcoming = await API.getUpcomingReminders(7);
@@ -142,9 +153,9 @@ const App = (() => {
   }
 
   // ══════════════════════════════════════
-  // DASHBOARD
+  // HOME — Banking Dashboard
   // ══════════════════════════════════════
-  async function renderDashboard(el) {
+  async function renderHome(el) {
     showLoading(el);
     try {
       const month = getCurrentMonth();
@@ -153,65 +164,142 @@ const App = (() => {
         API.getTransactions(month),
         API.getUpcomingReminders(7)
       ]);
+      const txns = transactions || [];
+      const recent = txns.slice(0, 5);
+      const balance = (summaryData.totalIncome || 0) - (summaryData.totalExpense || 0);
 
-      const recent = (transactions || []).slice(0, 5);
-      const upcomingList = upcoming || [];
+      // Weekly spending
+      const weekDays = ['จ','อ','พ','พฤ','ศ','ส','อา'];
+      const weeklyTotals = [0,0,0,0,0,0,0];
+      txns.forEach(t => {
+        if (t.type === 'expense') {
+          const d = new Date(t.date);
+          const day = (d.getDay() + 6) % 7; // Mon=0
+          weeklyTotals[day] += t.amount;
+        }
+      });
+      const maxWeekly = Math.max(...weeklyTotals, 1);
+
+      // Category breakdown for top categories
+      const catTotals = {};
+      const totalExpense = summaryData.totalExpense || 1;
+      txns.filter(t => t.type === 'expense').forEach(t => {
+        catTotals[t.category] = (catTotals[t.category] || 0) + t.amount;
+      });
+      const topCats = Object.entries(catTotals)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 4);
 
       el.innerHTML = `
-        <div class="dashboard">
-          <div class="summary-cards">
-            <div class="card card-income">
-              <div class="card-label">รายรับเดือนนี้</div>
-              <div class="card-value">+${formatMoney(summaryData.totalIncome)}</div>
+        <!-- Balance Card -->
+        <div class="balance-card">
+          <div class="balance-label">ยอดเงินคงเหลือทั้งหมด</div>
+          <div class="balance-amount">฿${formatMoney(balance)}</div>
+          <div class="balance-sub">
+            <div class="balance-sub-item">
+              <div class="balance-sub-label">รายรับเดือนนี้</div>
+              <div class="balance-sub-value">฿${formatMoney(summaryData.totalIncome)}</div>
             </div>
-            <div class="card card-expense">
-              <div class="card-label">รายจ่ายเดือนนี้</div>
-              <div class="card-value">-${formatMoney(summaryData.totalExpense)}</div>
-            </div>
-            <div class="card card-balance ${summaryData.balance >= 0 ? 'positive' : 'negative'}">
-              <div class="card-label">คงเหลือ</div>
-              <div class="card-value">${summaryData.balance >= 0 ? '+' : ''}${formatMoney(summaryData.balance)}</div>
+            <div class="balance-sub-item">
+              <div class="balance-sub-label">รายจ่ายเดือนนี้</div>
+              <div class="balance-sub-value">฿${formatMoney(summaryData.totalExpense)}</div>
             </div>
           </div>
+        </div>
 
-          ${upcomingList.length ? `
-          <div class="section">
-            <h3 class="section-title">🔔 การชำระที่ใกล้ถึง</h3>
-            <div class="reminder-list">
-              ${upcomingList.map(r => `
-                <div class="reminder-item ${r.daysLeft === 0 ? 'urgent' : r.daysLeft <= 2 ? 'warning' : ''}">
-                  <div class="reminder-info">
-                    <span class="reminder-name">${r.name}</span>
-                    <span class="reminder-due">${r.daysLeft === 0 ? 'วันนี้!' : 'อีก ' + r.daysLeft + ' วัน'}</span>
-                  </div>
-                  <span class="reminder-amount">${formatMoney(r.amount)} ฿</span>
+        <!-- Weekly Chart -->
+        <div class="section-header">
+          <span class="section-title">แนวโน้มการใช้จ่าย</span>
+          <button class="section-link" onclick="App.navigate('summary')">ดูทั้งหมด</button>
+        </div>
+        <div class="weekly-chart-card">
+          <div class="weekly-bars">
+            ${weekDays.map((day, i) => {
+              const h = Math.max(8, (weeklyTotals[i] / maxWeekly) * 100);
+              const isActive = weeklyTotals[i] > 0;
+              return `<div class="weekly-bar">
+                <div class="weekly-bar-fill ${isActive ? 'active' : ''}" style="height:${isActive ? h : 8}%"></div>
+                <span class="weekly-bar-label">${day}</span>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>
+
+        <!-- Top Categories -->
+        ${topCats.length ? `
+          <div class="section-header">
+            <span class="section-title">หมวดหมู่รายจ่าย</span>
+          </div>
+          ${topCats.slice(0, 2).map(([cat, amt]) => {
+            const pct = Math.round((amt / totalExpense) * 100);
+            return `<div class="category-card">
+              <div class="cat-icon ${getCatBg(cat)}">${getCatIcon(cat)}</div>
+              <div class="cat-info">
+                <div class="cat-name">${cat}</div>
+                <div class="cat-remaining">คงเหลือ ฿${formatMoney(amt)}</div>
+                <div class="cat-progress">
+                  <div class="cat-progress-fill" style="width:${pct}%;background:${getCatColor(cat)}"></div>
                 </div>
-              `).join('')}
-            </div>
-          </div>` : ''}
-
-          <div class="section">
-            <h3 class="section-title">📋 รายการล่าสุด</h3>
-            ${recent.length ? `
-              <div class="transaction-list">
-                ${recent.map(t => `
-                  <div class="transaction-item">
-                    <div class="txn-left">
-                      <span class="txn-cat">${t.category}</span>
-                      <span class="txn-desc">${t.description || '-'}</span>
-                    </div>
-                    <div class="txn-right">
-                      <span class="txn-amount ${t.type}">${t.type === 'income' ? '+' : '-'}${formatMoney(t.amount)}</span>
-                      <span class="txn-date">${formatDate(t.date)}</span>
-                    </div>
-                  </div>
-                `).join('')}
               </div>
-            ` : '<p class="no-data">ยังไม่มีรายการเดือนนี้</p>'}
+              <div class="cat-percent">${pct}%</div>
+            </div>`;
+          }).join('')}
+          ${topCats.length > 2 ? `
+            <div class="category-cards-grid">
+              ${topCats.slice(2).map(([cat, amt]) => {
+                const pct = Math.round((amt / totalExpense) * 100);
+                return `<div class="category-mini-card">
+                  <div class="cat-icon ${getCatBg(cat)}">${getCatIcon(cat)}</div>
+                  <div class="cat-name">${cat}</div>
+                  <div class="cat-mini-progress">
+                    <div class="cat-progress-fill" style="width:${pct}%;background:${getCatColor(cat)}"></div>
+                  </div>
+                </div>`;
+              }).join('')}
+            </div>` : ''}
+        ` : ''}
+
+        <!-- Upcoming Reminders -->
+        ${(upcoming || []).length ? `
+          <div class="section-header">
+            <span class="section-title">🔔 การชำระที่ใกล้ถึง</span>
+            <button class="section-link" onclick="App.navigate('reminders')">ดูทั้งหมด</button>
           </div>
-        </div>`;
+          ${(upcoming || []).slice(0, 3).map(r => `
+            <div class="reminder-item ${r.daysLeft === 0 ? 'urgent' : r.daysLeft <= 2 ? 'warning' : ''}">
+              <div class="reminder-info">
+                <span class="reminder-name">${r.name}</span>
+                <span class="reminder-due">${r.daysLeft === 0 ? 'วันนี้!' : 'อีก ' + r.daysLeft + ' วัน'}</span>
+              </div>
+              <span class="reminder-amount">${formatMoney(r.amount)} ฿</span>
+            </div>
+          `).join('')}
+        ` : ''}
+
+        <!-- Recent Transactions -->
+        <div class="section-header">
+          <span class="section-title">รายการล่าสุด</span>
+          <button class="section-link" onclick="App.navigate('history')">ดูทั้งหมด</button>
+        </div>
+        ${recent.length ? `
+          <div class="transaction-list">
+            ${recent.map(t => `
+              <div class="transaction-item">
+                <div class="txn-icon ${t.type}">${getCatIcon(t.category)}</div>
+                <div class="txn-left">
+                  <span class="txn-name">${t.description || t.category}</span>
+                  <span class="txn-meta">${t.category} • ${formatDate(t.date)}</span>
+                </div>
+                <div class="txn-right">
+                  <span class="txn-amount ${t.type}">${t.type === 'income' ? '+' : '-'}฿${formatMoney(t.amount)}</span>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        ` : '<p class="no-data">ยังไม่มีรายการเดือนนี้</p>'}
+      `;
     } catch (err) {
-      el.innerHTML = `<div class="error-page"><p>⚠️ ${err.message}</p><button class="btn btn-primary" onclick="App.navigate('dashboard')">ลองใหม่</button></div>`;
+      el.innerHTML = `<div class="error-page"><p>⚠️ ${err.message}</p><button class="btn btn-primary" onclick="App.navigate('home')">ลองใหม่</button></div>`;
     }
   }
 
@@ -221,7 +309,6 @@ const App = (() => {
   function renderAddTransaction(el, editData = null) {
     const cats_exp = settings?.categories_expense || ['อาหาร','ค่าเดินทาง','ค่าบัตรเครดิต','พรบ./ประกัน','ค่าน้ำ/ไฟ/เน็ต','ช้อปปิ้ง','สุขภาพ','การศึกษา','อื่นๆ'];
     const cats_inc = settings?.categories_income || ['เงินเดือน','งานเสริม','ลงทุน','อื่นๆ'];
-
     const isEdit = !!editData;
     const type = editData?.type || 'expense';
     const cats = type === 'income' ? cats_inc : cats_exp;
@@ -235,47 +322,39 @@ const App = (() => {
         <form id="txn-form" class="form">
           <input type="hidden" id="txn-id" value="${editData?.id || ''}">
           <input type="hidden" id="txn-type" value="${type}">
-
           <div class="form-group">
             <label>จำนวนเงิน (บาท)</label>
             <input type="number" id="txn-amount" class="input-field input-amount" placeholder="0"
                    value="${editData?.amount || ''}" inputmode="decimal" step="0.01" required>
           </div>
-
           <div class="form-group">
             <label>หมวดหมู่</label>
             <div class="category-grid" id="category-grid">
-              ${cats.map(c => `<button type="button" class="cat-btn ${editData?.category === c ? 'active' : ''}" data-cat="${c}">${c}</button>`).join('')}
+              ${cats.map(c => `<button type="button" class="cat-btn ${editData?.category === c ? 'active' : ''}" data-cat="${c}">${getCatIcon(c)} ${c}</button>`).join('')}
             </div>
             <input type="hidden" id="txn-category" value="${editData?.category || ''}">
           </div>
-
           <div class="form-group">
             <label>วันที่</label>
             <input type="date" id="txn-date" class="input-field" value="${editData?.date || getToday()}">
           </div>
-
           <div class="form-group">
-            <label>รายละเอียด (ไม่บังคับ)</label>
-            <input type="text" id="txn-desc" class="input-field" placeholder="เช่น ข้าวมันไก่"
-                   value="${editData?.description || ''}">
+            <label>รายละเอียด</label>
+            <input type="text" id="txn-desc" class="input-field" placeholder="เช่น ข้าวมันไก่" value="${editData?.description || ''}">
           </div>
-
           <button type="submit" class="btn btn-primary btn-full" id="btn-save-txn">
             ${isEdit ? '💾 บันทึกการแก้ไข' : '✅ บันทึกรายการ'}
           </button>
         </form>
       </div>`;
 
-    // Bind type toggle
     el.querySelectorAll('.toggle-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const t = btn.dataset.type;
         document.getElementById('txn-type').value = t;
         el.querySelectorAll('.toggle-btn').forEach(b => b.classList.toggle('active', b.dataset.type === t));
         const newCats = t === 'income' ? cats_inc : cats_exp;
-        const grid = document.getElementById('category-grid');
-        grid.innerHTML = newCats.map(c => `<button type="button" class="cat-btn" data-cat="${c}">${c}</button>`).join('');
+        document.getElementById('category-grid').innerHTML = newCats.map(c => `<button type="button" class="cat-btn" data-cat="${c}">${getCatIcon(c)} ${c}</button>`).join('');
         document.getElementById('txn-category').value = '';
         bindCatButtons();
       });
@@ -292,64 +371,45 @@ const App = (() => {
     }
     bindCatButtons();
 
-    // Form submit
     document.getElementById('txn-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const amount = document.getElementById('txn-amount').value;
       const category = document.getElementById('txn-category').value;
       if (!amount || Number(amount) <= 0) { showToast('กรุณาใส่จำนวนเงิน', 'error'); return; }
       if (!category) { showToast('กรุณาเลือกหมวดหมู่', 'error'); return; }
-
       const btn = document.getElementById('btn-save-txn');
-      btn.disabled = true;
-      btn.textContent = 'กำลังบันทึก...';
-
+      btn.disabled = true; btn.textContent = 'กำลังบันทึก...';
       try {
         const data = {
           type: document.getElementById('txn-type').value,
-          amount: Number(amount),
-          category,
+          amount: Number(amount), category,
           date: document.getElementById('txn-date').value,
           description: document.getElementById('txn-desc').value
         };
-
-        if (isEdit) {
-          data.id = editData.id;
-          await API.editTransaction(data);
-          showToast('แก้ไขสำเร็จ');
-          navigate('transactions');
-        } else {
-          await API.addTransaction(data);
-          showToast('บันทึกสำเร็จ');
-          // Reset form
+        if (isEdit) { data.id = editData.id; await API.editTransaction(data); showToast('แก้ไขสำเร็จ'); navigate('history'); }
+        else { await API.addTransaction(data); showToast('บันทึกสำเร็จ');
           document.getElementById('txn-amount').value = '';
           document.getElementById('txn-desc').value = '';
           document.getElementById('txn-category').value = '';
           el.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
         }
-      } catch (err) {
-        showToast(err.message, 'error');
-      } finally {
-        btn.disabled = false;
-        btn.textContent = isEdit ? '💾 บันทึกการแก้ไข' : '✅ บันทึกรายการ';
-      }
+      } catch (err) { showToast(err.message, 'error'); }
+      finally { btn.disabled = false; btn.textContent = isEdit ? '💾 บันทึกการแก้ไข' : '✅ บันทึกรายการ'; }
     });
   }
 
   // ══════════════════════════════════════
-  // TRANSACTIONS LIST
+  // HISTORY (Transaction List)
   // ══════════════════════════════════════
-  async function renderTransactions(el) {
+  async function renderHistory(el) {
     const month = getCurrentMonth();
     el.innerHTML = `
-      <div class="transactions-page">
-        <div class="month-picker">
-          <button class="btn-icon" id="month-prev">◀</button>
-          <input type="month" id="month-select" value="${month}" class="input-field input-month">
-          <button class="btn-icon" id="month-next">▶</button>
-        </div>
-        <div id="txn-list-container"></div>
-      </div>`;
+      <div class="month-picker">
+        <button class="btn-icon" id="month-prev">◀</button>
+        <input type="month" id="month-select" value="${month}" class="input-field input-month">
+        <button class="btn-icon" id="month-next">▶</button>
+      </div>
+      <div id="txn-list-container"></div>`;
 
     const monthInput = document.getElementById('month-select');
     const container = document.getElementById('txn-list-container');
@@ -358,42 +418,37 @@ const App = (() => {
       showLoading(container);
       try {
         const txns = await API.getTransactions(monthInput.value);
-        if (!txns || !txns.length) {
-          container.innerHTML = '<p class="no-data">ไม่มีรายการในเดือนนี้</p>';
-          return;
-        }
-
+        if (!txns || !txns.length) { container.innerHTML = '<p class="no-data">ไม่มีรายการในเดือนนี้</p>'; return; }
         const totalInc = txns.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
         const totalExp = txns.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
 
         container.innerHTML = `
           <div class="txn-month-summary">
-            <span class="income">+${formatMoney(totalInc)}</span>
-            <span class="expense">-${formatMoney(totalExp)}</span>
-            <span class="balance ${totalInc - totalExp >= 0 ? 'positive' : 'negative'}">${formatMoney(totalInc - totalExp)}</span>
+            <span class="income">+฿${formatMoney(totalInc)}</span>
+            <span class="expense">-฿${formatMoney(totalExp)}</span>
+            <span class="${totalInc - totalExp >= 0 ? 'positive' : 'negative'}">${formatMoney(totalInc - totalExp)}</span>
           </div>
           <div class="transaction-list">
             ${txns.map(t => `
               <div class="transaction-item" data-id="${t.id}">
+                <div class="txn-icon ${t.type}">${getCatIcon(t.category)}</div>
                 <div class="txn-left">
-                  <span class="txn-cat">${t.category}</span>
-                  <span class="txn-desc">${t.description || '-'}</span>
+                  <span class="txn-name">${t.description || t.category}</span>
+                  <span class="txn-meta">${t.category} • ${formatDate(t.date)}</span>
                 </div>
                 <div class="txn-right">
-                  <span class="txn-amount ${t.type}">${t.type === 'income' ? '+' : '-'}${formatMoney(t.amount)}</span>
-                  <span class="txn-date">${formatDate(t.date)}</span>
+                  <span class="txn-amount ${t.type}">${t.type === 'income' ? '+' : '-'}฿${formatMoney(t.amount)}</span>
                 </div>
                 <div class="txn-actions">
-                  <button class="btn-sm btn-edit" data-id="${t.id}" title="แก้ไข">✏️</button>
-                  <button class="btn-sm btn-delete" data-id="${t.id}" title="ลบ">🗑️</button>
+                  <button class="btn-sm btn-edit" data-id="${t.id}">✏️</button>
+                  <button class="btn-sm btn-delete" data-id="${t.id}">🗑️</button>
                 </div>
               </div>
             `).join('')}
           </div>`;
 
-        // Bind edit/delete
         container.querySelectorAll('.btn-edit').forEach(btn => {
-          btn.addEventListener('click', async () => {
+          btn.addEventListener('click', () => {
             const txn = txns.find(t => t.id === btn.dataset.id);
             if (txn) renderAddTransaction(document.getElementById('main-content'), txn);
           });
@@ -401,45 +456,142 @@ const App = (() => {
         container.querySelectorAll('.btn-delete').forEach(btn => {
           btn.addEventListener('click', async () => {
             if (!confirm('ลบรายการนี้?')) return;
-            try {
-              await API.deleteTransaction(btn.dataset.id);
-              showToast('ลบสำเร็จ');
-              loadTransactions();
-            } catch (err) { showToast(err.message, 'error'); }
+            try { await API.deleteTransaction(btn.dataset.id); showToast('ลบสำเร็จ'); loadTransactions(); }
+            catch (err) { showToast(err.message, 'error'); }
           });
         });
-      } catch (err) {
-        container.innerHTML = `<div class="error-page"><p>⚠️ ${err.message}</p></div>`;
-      }
+      } catch (err) { container.innerHTML = `<div class="error-page"><p>⚠️ ${err.message}</p></div>`; }
     }
 
     monthInput.addEventListener('change', loadTransactions);
     document.getElementById('month-prev').addEventListener('click', () => {
-      const d = new Date(monthInput.value + '-01');
-      d.setMonth(d.getMonth() - 1);
+      const d = new Date(monthInput.value + '-01'); d.setMonth(d.getMonth() - 1);
       monthInput.value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
       loadTransactions();
     });
     document.getElementById('month-next').addEventListener('click', () => {
-      const d = new Date(monthInput.value + '-01');
-      d.setMonth(d.getMonth() + 1);
+      const d = new Date(monthInput.value + '-01'); d.setMonth(d.getMonth() + 1);
       monthInput.value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
       loadTransactions();
     });
-
     loadTransactions();
+  }
+
+  // ══════════════════════════════════════
+  // CALENDAR
+  // ══════════════════════════════════════
+  async function renderCalendar(el) {
+    let calDate = new Date();
+    let selectedDate = getToday();
+    let monthTxns = [];
+
+    el.innerHTML = `<div class="calendar-page">
+      <div id="cal-header-wrap"></div>
+      <div id="cal-grid-wrap"></div>
+      <div id="cal-daily-wrap"></div>
+    </div>`;
+
+    async function loadMonth() {
+      const year = calDate.getFullYear();
+      const month = calDate.getMonth();
+      const monthStr = year + '-' + String(month + 1).padStart(2, '0');
+      const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+      try { monthTxns = await API.getTransactions(monthStr) || []; } catch { monthTxns = []; }
+
+      // dates with transactions
+      const txnDates = new Set(monthTxns.map(t => t.date));
+
+      // Header
+      document.getElementById('cal-header-wrap').innerHTML = `
+        <div class="cal-header">
+          <div>
+            <div class="cal-month-label">Monthly View</div>
+            <div class="cal-month-value">${monthNames[month]} ${year}</div>
+          </div>
+          <div class="cal-nav">
+            <button id="cal-prev">‹</button>
+            <button id="cal-next">›</button>
+          </div>
+        </div>`;
+
+      document.getElementById('cal-prev').addEventListener('click', () => { calDate.setMonth(calDate.getMonth() - 1); loadMonth(); });
+      document.getElementById('cal-next').addEventListener('click', () => { calDate.setMonth(calDate.getMonth() + 1); loadMonth(); });
+
+      // Calendar grid
+      const firstDay = new Date(year, month, 1).getDay(); // 0=Sun
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const today = getToday();
+
+      let daysHtml = '';
+      // Empty cells for days before first
+      for (let i = 0; i < firstDay; i++) daysHtml += '<button class="cal-day empty" disabled></button>';
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const isToday = dateStr === today;
+        const isSelected = dateStr === selectedDate;
+        const hasTxn = txnDates.has(dateStr);
+        daysHtml += `<button class="cal-day${isToday ? ' today' : ''}${isSelected ? ' selected' : ''}${hasTxn ? ' has-txn' : ''}" data-date="${dateStr}">${d}</button>`;
+      }
+
+      document.getElementById('cal-grid-wrap').innerHTML = `
+        <div class="cal-grid">
+          <div class="cal-weekdays"><span>SU</span><span>MO</span><span>TU</span><span>WE</span><span>TH</span><span>FR</span><span>SA</span></div>
+          <div class="cal-days">${daysHtml}</div>
+        </div>`;
+
+      document.querySelectorAll('.cal-day:not(.empty)').forEach(btn => {
+        btn.addEventListener('click', () => {
+          selectedDate = btn.dataset.date;
+          document.querySelectorAll('.cal-day').forEach(b => b.classList.remove('selected'));
+          btn.classList.add('selected');
+          renderDailyTxns();
+        });
+      });
+
+      renderDailyTxns();
+    }
+
+    function renderDailyTxns() {
+      const dayTxns = monthTxns.filter(t => t.date === selectedDate);
+      const parts = selectedDate.split('-');
+      const dateLabel = `${parts[1]}/${parts[2]}`;
+
+      document.getElementById('cal-daily-wrap').innerHTML = `
+        <div class="cal-daily-header">
+          <span class="cal-daily-title">Daily Transactions</span>
+          <span class="cal-daily-date">${dateLabel}</span>
+        </div>
+        ${dayTxns.length ? `
+          <div class="transaction-list">
+            ${dayTxns.map(t => `
+              <div class="transaction-item">
+                <div class="txn-icon ${t.type}">${getCatIcon(t.category)}</div>
+                <div class="txn-left">
+                  <span class="txn-name">${t.description || t.category}</span>
+                  <span class="txn-meta">${t.category}</span>
+                </div>
+                <div class="txn-right">
+                  <span class="txn-amount ${t.type}">${t.type === 'income' ? '+' : '-'}฿${formatMoney(t.amount)}</span>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        ` : '<p class="no-data">ไม่มีรายการในวันนี้</p>'}`;
+    }
+
+    loadMonth();
   }
 
   // ══════════════════════════════════════
   // REMINDERS
   // ══════════════════════════════════════
   async function renderReminders(el) {
-    el.innerHTML = `
-      <div class="reminders-page">
-        <button class="btn btn-primary btn-full" id="btn-add-reminder">➕ เพิ่มรายการแจ้งเตือน</button>
-        <div id="reminder-list-container"></div>
-        <div id="reminder-form-container" class="hidden"></div>
-      </div>`;
+    el.innerHTML = `<div>
+      <button class="btn btn-primary btn-full" id="btn-add-reminder" style="margin-bottom:16px">➕ เพิ่มรายการแจ้งเตือน</button>
+      <div id="reminder-list-container"></div>
+      <div id="reminder-form-container" class="hidden"></div>
+    </div>`;
 
     const listContainer = document.getElementById('reminder-list-container');
     const formContainer = document.getElementById('reminder-form-container');
@@ -448,24 +600,17 @@ const App = (() => {
       showLoading(listContainer);
       try {
         const reminders = await API.getReminders();
-        if (!reminders || !reminders.length) {
-          listContainer.innerHTML = '<p class="no-data">ยังไม่มีรายการแจ้งเตือน</p>';
-          return;
-        }
+        if (!reminders || !reminders.length) { listContainer.innerHTML = '<p class="no-data">ยังไม่มีรายการแจ้งเตือน</p>'; return; }
         listContainer.innerHTML = reminders.map(r => `
           <div class="reminder-card ${r.active ? '' : 'inactive'}">
             <div class="reminder-header">
               <span class="reminder-name">${r.name}</span>
-              <label class="switch">
-                <input type="checkbox" ${r.active ? 'checked' : ''} data-id="${r.id}" class="toggle-active">
-                <span class="slider"></span>
-              </label>
+              <label class="switch"><input type="checkbox" ${r.active ? 'checked' : ''} data-id="${r.id}" class="toggle-active"><span class="slider"></span></label>
             </div>
             <div class="reminder-details">
               <span>📅 ${formatDate(r.dueDate)}</span>
               <span>💰 ${formatMoney(r.amount)} ฿</span>
               <span>🔁 ${r.frequency === 'monthly' ? 'รายเดือน' : r.frequency === 'yearly' ? 'รายปี' : 'ครั้งเดียว'}</span>
-              <span>🔔 แจ้งก่อน ${r.notifyDaysBefore} วัน</span>
             </div>
             <div class="reminder-actions">
               <button class="btn-sm btn-edit" data-id="${r.id}">✏️ แก้ไข</button>
@@ -473,150 +618,75 @@ const App = (() => {
             </div>
           </div>
         `).join('');
-
-        // Bind toggle
         listContainer.querySelectorAll('.toggle-active').forEach(chk => {
-          chk.addEventListener('change', async () => {
-            try {
-              await API.toggleReminder(chk.dataset.id);
-              loadReminders();
-            } catch (err) { showToast(err.message, 'error'); }
-          });
+          chk.addEventListener('change', async () => { try { await API.toggleReminder(chk.dataset.id); loadReminders(); } catch (err) { showToast(err.message, 'error'); } });
         });
-
-        // Bind delete
         listContainer.querySelectorAll('.btn-delete').forEach(btn => {
-          btn.addEventListener('click', async () => {
-            if (!confirm('ลบรายการแจ้งเตือนนี้?')) return;
-            try {
-              await API.deleteReminder(btn.dataset.id);
-              showToast('ลบสำเร็จ');
-              loadReminders();
-            } catch (err) { showToast(err.message, 'error'); }
-          });
+          btn.addEventListener('click', async () => { if (!confirm('ลบ?')) return; try { await API.deleteReminder(btn.dataset.id); showToast('ลบสำเร็จ'); loadReminders(); } catch (err) { showToast(err.message, 'error'); } });
         });
-
-        // Bind edit
         listContainer.querySelectorAll('.btn-edit').forEach(btn => {
-          btn.addEventListener('click', () => {
-            const r = reminders.find(x => x.id === btn.dataset.id);
-            if (r) showReminderForm(r);
-          });
+          btn.addEventListener('click', () => { const r = reminders.find(x => x.id === btn.dataset.id); if (r) showReminderForm(r); });
         });
-      } catch (err) {
-        listContainer.innerHTML = `<div class="error-page"><p>⚠️ ${err.message}</p></div>`;
-      }
+      } catch (err) { listContainer.innerHTML = `<div class="error-page"><p>⚠️ ${err.message}</p></div>`; }
     }
 
     function showReminderForm(editData = null) {
       const isEdit = !!editData;
       formContainer.classList.remove('hidden');
       formContainer.innerHTML = `
-        <div class="form-overlay">
-          <div class="form-modal">
-            <h3>${isEdit ? '✏️ แก้ไขแจ้งเตือน' : '➕ เพิ่มแจ้งเตือน'}</h3>
-            <form id="reminder-form" class="form">
-              <div class="form-group">
-                <label>ชื่อรายการ</label>
-                <input type="text" id="rem-name" class="input-field" placeholder="เช่น ค่าบัตรเครดิต SCB"
-                       value="${editData?.name || ''}" required>
-              </div>
-              <div class="form-group">
-                <label>วันครบกำหนด</label>
-                <input type="date" id="rem-due" class="input-field" value="${editData?.dueDate || ''}" required>
-              </div>
-              <div class="form-group">
-                <label>จำนวนเงิน (บาท)</label>
-                <input type="number" id="rem-amount" class="input-field" placeholder="0"
-                       value="${editData?.amount || ''}" inputmode="decimal" step="0.01">
-              </div>
-              <div class="form-group">
-                <label>ความถี่</label>
-                <select id="rem-freq" class="input-field">
-                  <option value="once" ${editData?.frequency === 'once' ? 'selected' : ''}>ครั้งเดียว</option>
-                  <option value="monthly" ${editData?.frequency === 'monthly' ? 'selected' : ''}>รายเดือน</option>
-                  <option value="yearly" ${editData?.frequency === 'yearly' ? 'selected' : ''}>รายปี</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>หมวดหมู่</label>
-                <input type="text" id="rem-cat" class="input-field" placeholder="เช่น บัตรเครดิต"
-                       value="${editData?.category || ''}">
-              </div>
-              <div class="form-group">
-                <label>แจ้งเตือนก่อนกี่วัน</label>
-                <input type="number" id="rem-notify-days" class="input-field" min="0" max="30"
-                       value="${editData?.notifyDaysBefore ?? 3}">
-              </div>
-              <div class="form-buttons">
-                <button type="button" class="btn btn-outline" id="btn-cancel-rem">ยกเลิก</button>
-                <button type="submit" class="btn btn-primary" id="btn-save-rem">${isEdit ? 'บันทึก' : 'เพิ่ม'}</button>
-              </div>
-            </form>
-          </div>
-        </div>`;
-
-      document.getElementById('btn-cancel-rem').addEventListener('click', () => {
-        formContainer.classList.add('hidden');
-        formContainer.innerHTML = '';
-      });
-
+        <div class="form-overlay"><div class="form-modal">
+          <h3>${isEdit ? '✏️ แก้ไขแจ้งเตือน' : '➕ เพิ่มแจ้งเตือน'}</h3>
+          <form id="reminder-form" class="form">
+            <div class="form-group"><label>ชื่อรายการ</label><input type="text" id="rem-name" class="input-field" value="${editData?.name || ''}" required></div>
+            <div class="form-group"><label>วันครบกำหนด</label><input type="date" id="rem-due" class="input-field" value="${editData?.dueDate || ''}" required></div>
+            <div class="form-group"><label>จำนวนเงิน</label><input type="number" id="rem-amount" class="input-field" value="${editData?.amount || ''}" inputmode="decimal" step="0.01"></div>
+            <div class="form-group"><label>ความถี่</label><select id="rem-freq" class="input-field">
+              <option value="once" ${editData?.frequency === 'once' ? 'selected' : ''}>ครั้งเดียว</option>
+              <option value="monthly" ${editData?.frequency === 'monthly' ? 'selected' : ''}>รายเดือน</option>
+              <option value="yearly" ${editData?.frequency === 'yearly' ? 'selected' : ''}>รายปี</option>
+            </select></div>
+            <div class="form-group"><label>หมวดหมู่</label><input type="text" id="rem-cat" class="input-field" value="${editData?.category || ''}"></div>
+            <div class="form-group"><label>แจ้งเตือนก่อนกี่วัน</label><input type="number" id="rem-notify-days" class="input-field" min="0" max="30" value="${editData?.notifyDaysBefore ?? 3}"></div>
+            <div class="form-buttons">
+              <button type="button" class="btn btn-outline" id="btn-cancel-rem">ยกเลิก</button>
+              <button type="submit" class="btn btn-primary" id="btn-save-rem">${isEdit ? 'บันทึก' : 'เพิ่ม'}</button>
+            </div>
+          </form>
+        </div></div>`;
+      document.getElementById('btn-cancel-rem').addEventListener('click', () => { formContainer.classList.add('hidden'); formContainer.innerHTML = ''; });
       document.getElementById('reminder-form').addEventListener('submit', async (e) => {
         e.preventDefault();
-        const btn = document.getElementById('btn-save-rem');
-        btn.disabled = true;
+        const btn = document.getElementById('btn-save-rem'); btn.disabled = true;
         try {
-          const data = {
-            name: document.getElementById('rem-name').value,
-            dueDate: document.getElementById('rem-due').value,
-            amount: Number(document.getElementById('rem-amount').value) || 0,
-            frequency: document.getElementById('rem-freq').value,
-            category: document.getElementById('rem-cat').value || 'อื่นๆ',
-            notifyDaysBefore: Number(document.getElementById('rem-notify-days').value) || 3
-          };
-
-          if (isEdit) {
-            data.id = editData.id;
-            await API.updateReminder(data);
-            showToast('แก้ไขสำเร็จ');
-          } else {
-            await API.addReminder(data);
-            showToast('เพิ่มสำเร็จ');
-          }
-          formContainer.classList.add('hidden');
-          formContainer.innerHTML = '';
-          loadReminders();
-        } catch (err) {
-          showToast(err.message, 'error');
-        } finally {
-          btn.disabled = false;
-        }
+          const data = { name: document.getElementById('rem-name').value, dueDate: document.getElementById('rem-due').value,
+            amount: Number(document.getElementById('rem-amount').value) || 0, frequency: document.getElementById('rem-freq').value,
+            category: document.getElementById('rem-cat').value || 'อื่นๆ', notifyDaysBefore: Number(document.getElementById('rem-notify-days').value) || 3 };
+          if (isEdit) { data.id = editData.id; await API.updateReminder(data); showToast('แก้ไขสำเร็จ'); }
+          else { await API.addReminder(data); showToast('เพิ่มสำเร็จ'); }
+          formContainer.classList.add('hidden'); formContainer.innerHTML = ''; loadReminders();
+        } catch (err) { showToast(err.message, 'error'); } finally { btn.disabled = false; }
       });
     }
-
     document.getElementById('btn-add-reminder').addEventListener('click', () => showReminderForm());
     loadReminders();
   }
 
   // ══════════════════════════════════════
-  // MONTHLY SUMMARY
+  // SUMMARY
   // ══════════════════════════════════════
   async function renderSummary(el) {
     const month = getCurrentMonth();
     const year = new Date().getFullYear().toString();
-
-    el.innerHTML = `
-      <div class="summary-page">
-        <div class="month-picker">
-          <button class="btn-icon" id="sum-month-prev">◀</button>
-          <input type="month" id="sum-month-select" value="${month}" class="input-field input-month">
-          <button class="btn-icon" id="sum-month-next">▶</button>
-        </div>
-        <div id="summary-content"></div>
-        <h3 class="section-title" style="margin-top:1.5rem">📊 ภาพรวมปี ${year}</h3>
-        <div id="yearly-chart"></div>
-      </div>`;
-
+    el.innerHTML = `<div>
+      <div class="month-picker">
+        <button class="btn-icon" id="sum-month-prev">◀</button>
+        <input type="month" id="sum-month-select" value="${month}" class="input-field input-month">
+        <button class="btn-icon" id="sum-month-next">▶</button>
+      </div>
+      <div id="summary-content"></div>
+      <div class="section-header"><span class="section-title">📊 ภาพรวมปี ${year}</span></div>
+      <div id="yearly-chart"></div>
+    </div>`;
     const monthInput = document.getElementById('sum-month-select');
     const content = document.getElementById('summary-content');
 
@@ -626,55 +696,24 @@ const App = (() => {
         const data = await API.getMonthlySummary(monthInput.value);
         content.innerHTML = `
           <div class="summary-cards">
-            <div class="card card-income">
-              <div class="card-label">รายรับ</div>
-              <div class="card-value">+${formatMoney(data.totalIncome)}</div>
-            </div>
-            <div class="card card-expense">
-              <div class="card-label">รายจ่าย</div>
-              <div class="card-value">-${formatMoney(data.totalExpense)}</div>
-            </div>
-            <div class="card card-balance ${data.balance >= 0 ? 'positive' : 'negative'}">
-              <div class="card-label">คงเหลือ</div>
-              <div class="card-value">${data.balance >= 0 ? '+' : ''}${formatMoney(data.balance)}</div>
-            </div>
+            <div class="card card-income"><div class="card-label">รายรับ</div><div class="card-value">+${formatMoney(data.totalIncome)}</div></div>
+            <div class="card card-expense"><div class="card-label">รายจ่าย</div><div class="card-value">-${formatMoney(data.totalExpense)}</div></div>
+            <div class="card card-balance ${data.balance >= 0 ? 'positive' : 'negative'}"><div class="card-label">คงเหลือ</div><div class="card-value">${data.balance >= 0 ? '+' : ''}${formatMoney(data.balance)}</div></div>
           </div>
           ${data.topCategory ? `<p class="top-cat">💸 จ่ายมากสุด: <strong>${data.topCategory}</strong></p>` : ''}
-          <h3 class="section-title">📈 รายจ่ายตามหมวดหมู่</h3>
+          <div class="section-header"><span class="section-title">📈 รายจ่ายตามหมวดหมู่</span></div>
           <div id="category-pie"></div>`;
-
         Charts.pieChart(document.getElementById('category-pie'), data.categoryBreakdown);
-      } catch (err) {
-        content.innerHTML = `<div class="error-page"><p>⚠️ ${err.message}</p></div>`;
-      }
+      } catch (err) { content.innerHTML = `<div class="error-page"><p>⚠️ ${err.message}</p></div>`; }
     }
-
-    // Yearly chart
     async function loadYearly() {
       const yearlyEl = document.getElementById('yearly-chart');
-      try {
-        const yearVal = monthInput.value.split('-')[0];
-        const yearlyData = await API.getYearlySummary(yearVal);
-        Charts.barChart(yearlyEl, yearlyData);
-      } catch {}
+      try { const yearVal = monthInput.value.split('-')[0]; const yearlyData = await API.getYearlySummary(yearVal); Charts.barChart(yearlyEl, yearlyData); } catch {}
     }
-
     monthInput.addEventListener('change', () => { loadSummary(); loadYearly(); });
-    document.getElementById('sum-month-prev').addEventListener('click', () => {
-      const d = new Date(monthInput.value + '-01');
-      d.setMonth(d.getMonth() - 1);
-      monthInput.value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
-      loadSummary(); loadYearly();
-    });
-    document.getElementById('sum-month-next').addEventListener('click', () => {
-      const d = new Date(monthInput.value + '-01');
-      d.setMonth(d.getMonth() + 1);
-      monthInput.value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
-      loadSummary(); loadYearly();
-    });
-
-    loadSummary();
-    loadYearly();
+    document.getElementById('sum-month-prev').addEventListener('click', () => { const d = new Date(monthInput.value + '-01'); d.setMonth(d.getMonth() - 1); monthInput.value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); loadSummary(); loadYearly(); });
+    document.getElementById('sum-month-next').addEventListener('click', () => { const d = new Date(monthInput.value + '-01'); d.setMonth(d.getMonth() + 1); monthInput.value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); loadSummary(); loadYearly(); });
+    loadSummary(); loadYearly();
   }
 
   // ══════════════════════════════════════
@@ -684,123 +723,143 @@ const App = (() => {
     showLoading(el);
     try {
       const profile = await API.getProfile();
+      profileCache = profile;
       const emoji = profile.avatarEmoji || '👤';
-      const name = profile.displayName || '';
-      const nick = profile.nickname || '';
+      const name = profile.displayName || 'ยังไม่ได้ตั้งชื่อ';
+      const email = profile.email || '';
 
       el.innerHTML = `
         <div class="profile-page">
-          <div class="profile-header">
-            <div class="profile-avatar" id="avatar-picker">${emoji}</div>
-            <div class="profile-name-display">
-              <span class="profile-display-name">${name || 'ยังไม่ได้ตั้งชื่อ'}</span>
-              ${nick ? `<span class="profile-nickname">@${nick}</span>` : ''}
+          <!-- Avatar card -->
+          <div class="profile-card">
+            <div class="profile-avatar-lg" id="avatar-picker">
+              ${emoji}
+              <div class="profile-avatar-edit">✏️</div>
             </div>
+            <div class="profile-name">${name}</div>
+            ${email ? `<div class="profile-email">${email}</div>` : ''}
           </div>
 
-          <div class="profile-stats">
-            <div class="stat-item">
-              <span class="stat-value" id="stat-total-txn">-</span>
-              <span class="stat-label">รายการ</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-value" id="stat-this-month">-</span>
-              <span class="stat-label">เดือนนี้</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-value" id="stat-reminders">-</span>
-              <span class="stat-label">แจ้งเตือน</span>
-            </div>
-          </div>
-
+          <!-- Account Info -->
           <div class="profile-section">
-            <h3 class="section-title">📝 ข้อมูลส่วนตัว</h3>
-            <form id="profile-form" class="form">
-              <div class="form-group">
-                <label>ชื่อแสดง</label>
-                <input type="text" id="pf-name" class="input-field" placeholder="ชื่อ-สกุล" value="${name}">
-              </div>
-              <div class="form-group">
-                <label>ชื่อเล่น</label>
-                <input type="text" id="pf-nick" class="input-field" placeholder="ชื่อเล่น" value="${nick}">
-              </div>
-              <div class="form-group">
-                <label>อีเมล</label>
-                <input type="email" id="pf-email" class="input-field" placeholder="email@example.com" value="${profile.email || ''}">
-              </div>
-              <div class="form-group">
-                <label>เบอร์โทร</label>
-                <input type="tel" id="pf-phone" class="input-field" placeholder="0xx-xxx-xxxx" value="${profile.phone || ''}">
-              </div>
-              <div class="form-group">
-                <label>วันเกิด</label>
-                <input type="date" id="pf-birthday" class="input-field" value="${profile.birthday || ''}">
-              </div>
-              <div class="form-group">
-                <label>เกี่ยวกับตัวเอง</label>
-                <textarea id="pf-bio" class="input-field" rows="3" placeholder="เป้าหมายการเงิน, คำอธิบายสั้นๆ...">${profile.bio || ''}</textarea>
-              </div>
-              <button type="submit" class="btn btn-primary btn-full" id="btn-save-profile">💾 บันทึกโปรไฟล์</button>
-            </form>
-          </div>
-
-          <div class="profile-section">
-            <h3 class="section-title">🔐 ความปลอดภัย</h3>
-            <div class="security-item">
-              <div class="security-info">
-                <span class="security-label">PIN เข้าใช้งาน</span>
-                <span class="security-status">✅ ตั้งค่าแล้ว</span>
-              </div>
-              <button class="btn btn-outline btn-sm" id="btn-go-change-pin">เปลี่ยน PIN</button>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+              <h3 style="margin:0">Account Information</h3>
+              <button class="section-link" id="btn-edit-profile">Edit All</button>
+            </div>
+            <div class="profile-info-row">
+              <div class="profile-info-label">FULL NAME</div>
+              <div class="profile-info-value">${profile.displayName || '-'}</div>
+            </div>
+            <div class="profile-info-row">
+              <div class="profile-info-label">NICKNAME</div>
+              <div class="profile-info-value">${profile.nickname || '-'}</div>
+            </div>
+            <div class="profile-info-row">
+              <div class="profile-info-label">EMAIL ADDRESS</div>
+              <div class="profile-info-value">${profile.email || '-'}</div>
+            </div>
+            <div class="profile-info-row">
+              <div class="profile-info-label">PHONE</div>
+              <div class="profile-info-value">${profile.phone || '-'}</div>
+            </div>
+            <div class="profile-info-row">
+              <div class="profile-info-label">BIRTHDAY</div>
+              <div class="profile-info-value">${profile.birthday ? formatDate(profile.birthday) : '-'}</div>
             </div>
           </div>
 
+          <!-- Notification Preferences -->
           <div class="profile-section">
-            <button class="btn btn-danger btn-full" id="btn-logout-profile">🔒 ออกจากระบบ</button>
+            <h3>Notification Preferences</h3>
+            <div class="notification-pref-item">
+              <div class="notif-pref-icon" style="background:#dbeafe">🔔</div>
+              <div class="notif-pref-info">
+                <div class="notif-pref-name">Push Notifications</div>
+                <div class="notif-pref-desc">แจ้งเตือนการชำระรายวัน</div>
+              </div>
+              <label class="switch"><input type="checkbox" checked disabled><span class="slider"></span></label>
+            </div>
+            <div class="notification-pref-item">
+              <div class="notif-pref-icon" style="background:#dcfce7">📱</div>
+              <div class="notif-pref-info">
+                <div class="notif-pref-name">LINE Notify</div>
+                <div class="notif-pref-desc">${settings?.hasLineToken ? '✅ เชื่อมต่อแล้ว' : 'ยังไม่ได้เชื่อมต่อ'}</div>
+              </div>
+              <button class="btn-sm" onclick="App.navigate('settings')">ตั้งค่า</button>
+            </div>
           </div>
+
+          <!-- Quick Links -->
+          <div class="profile-section">
+            <h3>จัดการ</h3>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <button class="btn btn-outline btn-full" onclick="App.navigate('reminders')">🔔 จัดการแจ้งเตือน</button>
+              <button class="btn btn-outline btn-full" onclick="App.navigate('summary')">📊 สรุปรายเดือน</button>
+              <button class="btn btn-outline btn-full" onclick="App.navigate('settings')">⚙️ ตั้งค่าทั้งหมด</button>
+            </div>
+          </div>
+
+          <!-- Security -->
+          <div class="profile-section">
+            <h3>🔐 ความปลอดภัย</h3>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0">
+              <div><div style="font-weight:500">PIN เข้าใช้งาน</div><div style="font-size:0.75rem;color:var(--success)">✅ ตั้งค่าแล้ว</div></div>
+              <button class="btn-sm" id="btn-go-change-pin">เปลี่ยน PIN</button>
+            </div>
+          </div>
+
+          <button class="btn btn-danger btn-full" id="btn-logout-profile" style="margin-top:8px">🔒 ออกจากระบบ</button>
         </div>
 
         <div id="emoji-modal" class="form-overlay hidden">
           <div class="form-modal emoji-modal">
             <h3>เลือกอิโมจิโปรไฟล์</h3>
             <div class="emoji-grid">${
-              ['👤','👨','👩','👦','👧','🧑','👨‍💼','👩‍💼','🧑‍💻','👨‍🎓','👩‍🎓','🦸','🦸‍♂️','🦸‍♀️',
-               '😀','😎','🤓','🥳','😊','🤩','🐱','🐶','🦊','🐻','🐼','🦁','🐯','🐸',
-               '💰','💎','🏦','📊','🎯','🚀','⭐','🌟','💜','💙','💚','❤️'].map(e =>
+              ['👤','👨','👩','🧑','👨‍💼','👩‍💼','🧑‍💻','👨‍🎓','👩‍🎓','🦸','😀','😎','🤓','🥳','😊','🤩',
+               '🐱','🐶','🦊','🐻','🐼','🦁','🐯','🐸','💰','💎','🏦','📊','🎯','🚀','⭐','🌟','💜','💙','💚','❤️'].map(e =>
                 `<button type="button" class="emoji-btn" data-emoji="${e}">${e}</button>`
               ).join('')}
             </div>
             <button class="btn btn-outline btn-full" id="btn-close-emoji">ปิด</button>
           </div>
+        </div>
+
+        <div id="edit-profile-modal" class="form-overlay hidden">
+          <div class="form-modal">
+            <h3>📝 แก้ไขข้อมูล</h3>
+            <form id="profile-form" class="form">
+              <div class="form-group"><label>FULL NAME</label><input type="text" id="pf-name" class="input-field" value="${profile.displayName || ''}"></div>
+              <div class="form-group"><label>NICKNAME</label><input type="text" id="pf-nick" class="input-field" value="${profile.nickname || ''}"></div>
+              <div class="form-group"><label>EMAIL</label><input type="email" id="pf-email" class="input-field" value="${profile.email || ''}"></div>
+              <div class="form-group"><label>PHONE</label><input type="tel" id="pf-phone" class="input-field" value="${profile.phone || ''}"></div>
+              <div class="form-group"><label>BIRTHDAY</label><input type="date" id="pf-birthday" class="input-field" value="${profile.birthday || ''}"></div>
+              <div class="form-group"><label>BIO</label><textarea id="pf-bio" class="input-field" rows="3">${profile.bio || ''}</textarea></div>
+              <div class="form-buttons">
+                <button type="button" class="btn btn-outline" id="btn-cancel-profile">ยกเลิก</button>
+                <button type="submit" class="btn btn-primary" id="btn-save-profile">บันทึก</button>
+              </div>
+            </form>
+          </div>
         </div>`;
 
-      // Load stats in background
-      loadProfileStats();
-
       // Emoji picker
-      document.getElementById('avatar-picker').addEventListener('click', () => {
-        document.getElementById('emoji-modal').classList.remove('hidden');
-      });
-      document.getElementById('btn-close-emoji').addEventListener('click', () => {
-        document.getElementById('emoji-modal').classList.add('hidden');
-      });
+      document.getElementById('avatar-picker').addEventListener('click', () => document.getElementById('emoji-modal').classList.remove('hidden'));
+      document.getElementById('btn-close-emoji').addEventListener('click', () => document.getElementById('emoji-modal').classList.add('hidden'));
       document.querySelectorAll('.emoji-btn').forEach(btn => {
         btn.addEventListener('click', async () => {
           const em = btn.dataset.emoji;
-          document.getElementById('avatar-picker').textContent = em;
+          document.querySelector('.profile-avatar-lg').childNodes[0].textContent = em;
           document.getElementById('emoji-modal').classList.add('hidden');
-          try {
-            await API.updateProfile({ avatarEmoji: em });
-          } catch {}
+          try { await API.updateProfile({ avatarEmoji: em }); profileCache.avatarEmoji = em; updateHeaderAvatar(); } catch {}
         });
       });
 
-      // Save profile
+      // Edit profile modal
+      document.getElementById('btn-edit-profile').addEventListener('click', () => document.getElementById('edit-profile-modal').classList.remove('hidden'));
+      document.getElementById('btn-cancel-profile').addEventListener('click', () => document.getElementById('edit-profile-modal').classList.add('hidden'));
       document.getElementById('profile-form').addEventListener('submit', async (e) => {
         e.preventDefault();
-        const btn = document.getElementById('btn-save-profile');
-        btn.disabled = true;
-        btn.textContent = 'กำลังบันทึก...';
+        const btn = document.getElementById('btn-save-profile'); btn.disabled = true; btn.textContent = 'กำลังบันทึก...';
         try {
           await API.updateProfile({
             displayName: document.getElementById('pf-name').value.trim(),
@@ -810,49 +869,18 @@ const App = (() => {
             birthday: document.getElementById('pf-birthday').value,
             bio: document.getElementById('pf-bio').value.trim()
           });
-          // Update header display
-          const nameVal = document.getElementById('pf-name').value.trim();
-          const nickVal = document.getElementById('pf-nick').value.trim();
-          el.querySelector('.profile-display-name').textContent = nameVal || 'ยังไม่ได้ตั้งชื่อ';
-          const nickEl = el.querySelector('.profile-nickname');
-          if (nickEl) nickEl.textContent = nickVal ? '@' + nickVal : '';
-          showToast('บันทึกโปรไฟล์สำเร็จ');
-        } catch (err) {
-          showToast(err.message, 'error');
-        } finally {
-          btn.disabled = false;
-          btn.textContent = '💾 บันทึกโปรไฟล์';
-        }
+          showToast('บันทึกสำเร็จ');
+          document.getElementById('edit-profile-modal').classList.add('hidden');
+          renderProfile(el); // Re-render
+        } catch (err) { showToast(err.message, 'error'); }
+        finally { btn.disabled = false; btn.textContent = 'บันทึก'; }
       });
 
-      // Change PIN → go to settings
       document.getElementById('btn-go-change-pin').addEventListener('click', () => navigate('settings'));
-
-      // Logout
       document.getElementById('btn-logout-profile').addEventListener('click', Auth.logout);
-
     } catch (err) {
       el.innerHTML = `<div class="error-page"><p>⚠️ ${err.message}</p><button class="btn btn-primary" onclick="App.navigate('profile')">ลองใหม่</button></div>`;
     }
-  }
-
-  async function loadProfileStats() {
-    try {
-      const month = getCurrentMonth();
-      const [txns, reminders] = await Promise.all([
-        API.getTransactions(month),
-        API.getReminders()
-      ]);
-      const totalEl = document.getElementById('stat-total-txn');
-      const monthEl = document.getElementById('stat-this-month');
-      const remEl = document.getElementById('stat-reminders');
-      if (totalEl) totalEl.textContent = (txns || []).length;
-      if (monthEl) {
-        const exp = (txns || []).filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
-        monthEl.textContent = formatMoney(exp) + '฿';
-      }
-      if (remEl) remEl.textContent = (reminders || []).filter(r => r.active).length;
-    } catch {}
   }
 
   // ══════════════════════════════════════
@@ -863,141 +891,84 @@ const App = (() => {
       <div class="settings-page">
         <div class="settings-group">
           <h3>🔑 เปลี่ยน PIN</h3>
-          <div class="form-group">
-            <input type="password" id="old-pin" class="input-field" placeholder="PIN เดิม" inputmode="numeric" maxlength="6">
-          </div>
-          <div class="form-group">
-            <input type="password" id="new-pin" class="input-field" placeholder="PIN ใหม่ (4-6 หลัก)" inputmode="numeric" maxlength="6">
-          </div>
+          <div class="form-group"><input type="password" id="old-pin" class="input-field" placeholder="PIN เดิม" inputmode="numeric" maxlength="6"></div>
+          <div class="form-group"><input type="password" id="new-pin" class="input-field" placeholder="PIN ใหม่ (4-6 หลัก)" inputmode="numeric" maxlength="6"></div>
           <button class="btn btn-primary btn-full" id="btn-change-pin">เปลี่ยน PIN</button>
         </div>
-
         <div class="settings-group">
           <h3>📱 LINE Notify</h3>
-          <p class="settings-hint">ลงทะเบียนที่ <a href="https://notify-bot.line.me/" target="_blank" rel="noopener">notify-bot.line.me</a> เพื่อรับ Token</p>
-          <div class="form-group">
-            <input type="text" id="line-token" class="input-field" placeholder="LINE Notify Access Token">
-          </div>
+          <p class="settings-hint">ลงทะเบียนที่ <a href="https://notify-bot.line.me/" target="_blank" rel="noopener">notify-bot.line.me</a></p>
+          <div class="form-group"><input type="text" id="line-token" class="input-field" placeholder="LINE Notify Access Token"></div>
           <button class="btn btn-primary btn-full" id="btn-save-line">บันทึก LINE Token</button>
           <p id="line-status" class="settings-hint"></p>
         </div>
-
         <div class="settings-group">
-          <h3>🏷️ จัดการหมวดหมู่รายจ่าย</h3>
+          <h3>🏷️ หมวดหมู่รายจ่าย</h3>
           <div id="cats-expense-list" class="tag-list"></div>
-          <div class="form-row">
-            <input type="text" id="new-cat-expense" class="input-field" placeholder="เพิ่มหมวดหมู่ใหม่">
-            <button class="btn btn-primary" id="btn-add-cat-expense">เพิ่ม</button>
-          </div>
+          <div class="form-row"><input type="text" id="new-cat-expense" class="input-field" placeholder="เพิ่มหมวดหมู่"><button class="btn btn-primary" id="btn-add-cat-expense">เพิ่ม</button></div>
         </div>
-
         <div class="settings-group">
-          <h3>🏷️ จัดการหมวดหมู่รายรับ</h3>
+          <h3>🏷️ หมวดหมู่รายรับ</h3>
           <div id="cats-income-list" class="tag-list"></div>
-          <div class="form-row">
-            <input type="text" id="new-cat-income" class="input-field" placeholder="เพิ่มหมวดหมู่ใหม่">
-            <button class="btn btn-primary" id="btn-add-cat-income">เพิ่ม</button>
-          </div>
+          <div class="form-row"><input type="text" id="new-cat-income" class="input-field" placeholder="เพิ่มหมวดหมู่"><button class="btn btn-primary" id="btn-add-cat-income">เพิ่ม</button></div>
         </div>
-
-        <div class="settings-group">
-          <h3>🔗 API URL</h3>
-          <p class="settings-hint current-url">${localStorage.getItem('bfm_api_url') || 'ยังไม่ได้ตั้งค่า'}</p>
-          <button class="btn btn-outline btn-full" id="btn-reset-url">เปลี่ยน URL</button>
-        </div>
-
         <div class="settings-group">
           <button class="btn btn-danger btn-full" id="btn-logout-settings">🔒 ออกจากระบบ</button>
         </div>
       </div>`;
 
-    // PIN change
     document.getElementById('btn-change-pin').addEventListener('click', async () => {
       const oldPin = document.getElementById('old-pin').value;
       const newPin = document.getElementById('new-pin').value;
-      try {
-        await API.changePin(oldPin, newPin);
-        showToast('เปลี่ยน PIN สำเร็จ');
-        document.getElementById('old-pin').value = '';
-        document.getElementById('new-pin').value = '';
-      } catch (err) { showToast(err.message, 'error'); }
+      try { await API.changePin(oldPin, newPin); showToast('เปลี่ยน PIN สำเร็จ'); document.getElementById('old-pin').value = ''; document.getElementById('new-pin').value = ''; }
+      catch (err) { showToast(err.message, 'error'); }
     });
 
-    // LINE Token
     const lineStatus = document.getElementById('line-status');
-    if (settings?.hasLineToken) {
-      lineStatus.textContent = '✅ ตั้ง LINE Token แล้ว';
-    }
+    if (settings?.hasLineToken) lineStatus.textContent = '✅ ตั้ง LINE Token แล้ว';
     document.getElementById('btn-save-line').addEventListener('click', async () => {
       const token = document.getElementById('line-token').value.trim();
       if (!token) { showToast('กรุณาใส่ Token', 'error'); return; }
-      try {
-        await API.updateSetting('lineToken', token);
-        showToast('บันทึก LINE Token สำเร็จ');
-        lineStatus.textContent = '✅ ตั้ง LINE Token แล้ว';
-        document.getElementById('line-token').value = '';
-      } catch (err) { showToast(err.message, 'error'); }
+      try { await API.updateSetting('lineToken', token); showToast('บันทึกสำเร็จ'); lineStatus.textContent = '✅ ตั้ง LINE Token แล้ว'; document.getElementById('line-token').value = ''; }
+      catch (err) { showToast(err.message, 'error'); }
     });
 
-    // Categories
     function renderCatTags(containerId, cats, type) {
       const container = document.getElementById(containerId);
-      container.innerHTML = cats.map(c =>
-        `<span class="tag">${c} <button class="tag-remove" data-cat="${c}" data-type="${type}">✕</button></span>`
-      ).join('');
+      container.innerHTML = cats.map(c => `<span class="tag">${c} <button class="tag-remove" data-cat="${c}" data-type="${type}">✕</button></span>`).join('');
       container.querySelectorAll('.tag-remove').forEach(btn => {
         btn.addEventListener('click', async () => {
-          const cat = btn.dataset.cat;
-          const t = btn.dataset.type;
+          const cat = btn.dataset.cat; const t = btn.dataset.type;
           const key = t === 'expense' ? 'categories_expense' : 'categories_income';
-          const currentCats = t === 'expense' ? [...(settings?.categories_expense || [])] : [...(settings?.categories_income || [])];
-          const updated = currentCats.filter(c => c !== cat);
-          try {
-            await API.updateSetting(key, updated);
-            if (t === 'expense') settings.categories_expense = updated;
-            else settings.categories_income = updated;
-            renderCatTags(containerId, updated, t);
-            showToast('ลบหมวดหมู่สำเร็จ');
+          const curr = t === 'expense' ? [...(settings?.categories_expense || [])] : [...(settings?.categories_income || [])];
+          const updated = curr.filter(c => c !== cat);
+          try { await API.updateSetting(key, updated);
+            if (t === 'expense') settings.categories_expense = updated; else settings.categories_income = updated;
+            renderCatTags(containerId, updated, t); showToast('ลบสำเร็จ');
           } catch (err) { showToast(err.message, 'error'); }
         });
       });
     }
-
     renderCatTags('cats-expense-list', settings?.categories_expense || [], 'expense');
     renderCatTags('cats-income-list', settings?.categories_income || [], 'income');
 
-    // Add category
     function bindAddCat(btnId, inputId, type) {
       document.getElementById(btnId).addEventListener('click', async () => {
-        const input = document.getElementById(inputId);
-        const val = input.value.trim();
+        const input = document.getElementById(inputId); const val = input.value.trim();
         if (!val) return;
         const key = type === 'expense' ? 'categories_expense' : 'categories_income';
-        const currentCats = type === 'expense' ? [...(settings?.categories_expense || [])] : [...(settings?.categories_income || [])];
-        if (currentCats.includes(val)) { showToast('หมวดหมู่นี้มีอยู่แล้ว', 'error'); return; }
-        currentCats.push(val);
-        try {
-          await API.updateSetting(key, currentCats);
-          if (type === 'expense') settings.categories_expense = currentCats;
-          else settings.categories_income = currentCats;
-          renderCatTags(type === 'expense' ? 'cats-expense-list' : 'cats-income-list', currentCats, type);
-          input.value = '';
-          showToast('เพิ่มหมวดหมู่สำเร็จ');
+        const curr = type === 'expense' ? [...(settings?.categories_expense || [])] : [...(settings?.categories_income || [])];
+        if (curr.includes(val)) { showToast('มีอยู่แล้ว', 'error'); return; }
+        curr.push(val);
+        try { await API.updateSetting(key, curr);
+          if (type === 'expense') settings.categories_expense = curr; else settings.categories_income = curr;
+          renderCatTags(type === 'expense' ? 'cats-expense-list' : 'cats-income-list', curr, type);
+          input.value = ''; showToast('เพิ่มสำเร็จ');
         } catch (err) { showToast(err.message, 'error'); }
       });
     }
     bindAddCat('btn-add-cat-expense', 'new-cat-expense', 'expense');
     bindAddCat('btn-add-cat-income', 'new-cat-income', 'income');
-
-    // Reset URL
-    document.getElementById('btn-reset-url').addEventListener('click', () => {
-      if (confirm('ต้องการเปลี่ยน API URL?')) {
-        localStorage.removeItem('bfm_api_url');
-        location.reload();
-      }
-    });
-
-    // Logout
     document.getElementById('btn-logout-settings').addEventListener('click', Auth.logout);
   }
 
@@ -1006,9 +977,6 @@ const App = (() => {
 
 // ── Boot ──
 document.addEventListener('DOMContentLoaded', () => {
-  // Register service worker
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
-  }
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
   App.init();
 });
