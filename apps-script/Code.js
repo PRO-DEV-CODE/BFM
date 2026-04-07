@@ -66,7 +66,7 @@ function sha256(text) {
 // ── Initialization ──
 function initSheets() {
   getOrCreateSheet(SH_TRANSACTIONS,
-    ['id','date','type','category','amount','description','created']);
+    ['id','date','type','category','amount','description','created','createdBy']);
   getOrCreateSheet(SH_REMINDERS,
     ['id','name','dueDate','amount','frequency','category','notifyDaysBefore','lastNotified','active']);
   getOrCreateSheet(SH_SETTINGS, ['key','value']);

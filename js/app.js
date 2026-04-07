@@ -1303,15 +1303,12 @@ const App = (() => {
         btn.addEventListener('click', async () => {
           if (!confirm('ลบสมาชิกนี้?')) return;
           try {
-            try { await API.deleteMember(btn.dataset.mid); } catch {
-              // Fallback: remove from localStorage
-              membersCache = membersCache.filter(m => m.id !== btn.dataset.mid);
-              localStorage.setItem('bfm_members', JSON.stringify(membersCache));
-            }
+            await API.deleteMember(btn.dataset.mid);
             showToast('ลบสำเร็จ');
             if (currentMember && currentMember.id === btn.dataset.mid) setCurrentMember(null);
+            await loadMembers();
             renderMembers(el);
-          } catch (err) { showToast(err.message, 'error'); }
+          } catch (err) { showToast('ลบไม่สำเร็จ: ' + err.message, 'error'); }
         });
       });
 
@@ -1327,23 +1324,10 @@ const App = (() => {
         btn.disabled = true; btn.textContent = 'กำลังบันทึก...';
         try {
           if (id) {
-            try { await API.updateMember({ id, name, avatarColor, role }); } catch {
-              // Fallback: update in localStorage
-              const idx = membersCache.findIndex(m => m.id === id);
-              if (idx >= 0) Object.assign(membersCache[idx], { name, avatarColor, role });
-              localStorage.setItem('bfm_members', JSON.stringify(membersCache));
-            }
+            await API.updateMember({ id, name, avatarColor, role });
             showToast('แก้ไขสำเร็จ');
           } else {
-            try {
-              const res = await API.addMember({ name, avatarColor, role });
-              membersCache.push({ id: res.id, name, avatarColor, role });
-            } catch {
-              // Fallback: add to localStorage
-              const newMember = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name, avatarColor, role };
-              membersCache.push(newMember);
-            }
-            localStorage.setItem('bfm_members', JSON.stringify(membersCache));
+            await API.addMember({ name, avatarColor, role });
             showToast('เพิ่มสมาชิกสำเร็จ');
           }
           document.getElementById('member-form-modal').classList.add('hidden');
