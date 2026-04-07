@@ -1052,6 +1052,15 @@ textarea.input-field { resize: vertical; }
   display: flex; align-items: center; justify-content: center;
   font-size: 2.5rem; margin: 0 auto 8px;
   color: #fff; position: relative; cursor: pointer;
+  overflow: hidden;
+}
+.profile-photo-img {
+  width: 100%; height: 100%; object-fit: cover;
+  border-radius: 50%; display: block;
+}
+.header-avatar-img {
+  width: 100%; height: 100%; object-fit: cover;
+  border-radius: 50%; display: block;
 }
 .profile-avatar-edit {
   position: absolute; bottom: 0; right: 0;
@@ -1091,6 +1100,7 @@ textarea.input-field { resize: vertical; }
 .notif-pref-desc { font-size: 0.75rem; color: var(--text-muted); }
 
 /* Color picker modal */
+.avatar-options { margin-bottom: 16px; }
 .color-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 1rem; }
 .color-btn {
   width: 100%; aspect-ratio: 1; border-radius: 50%;

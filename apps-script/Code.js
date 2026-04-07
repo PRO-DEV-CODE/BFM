@@ -703,7 +703,7 @@ function getProfileApi() {
 
 function updateProfileApi(p) {
   var sheet = getOrCreateSheet(SH_PROFILE, ['key', 'value']);
-  var allowed = ['displayName', 'nickname', 'email', 'phone', 'birthday', 'avatarEmoji', 'bio'];
+  var allowed = ['displayName', 'nickname', 'email', 'phone', 'birthday', 'avatarEmoji', 'bio', 'profilePhoto'];
   var data = sheet.getDataRange().getValues();
   var keys = data.map(function(r) { return r[0]; });
   var updated = [];

@@ -63,6 +63,30 @@ const App = (() => {
   function getCatColor(cat) { return CAT_COLORS[cat] || '#94a3b8'; }
   function getCatBg(cat) { return CAT_BG[cat] || 'other'; }
 
+  // ── Image Compress Helper ──
+  function compressImage(file, maxSize = 200, quality = 0.8) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let w = img.width, h = img.height;
+          if (w > h) { if (w > maxSize) { h = Math.round(h * maxSize / w); w = maxSize; } }
+          else { if (h > maxSize) { w = Math.round(w * maxSize / h); h = maxSize; } }
+          canvas.width = w; canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.onerror = () => reject(new Error('ไม่สามารถอ่านรูปภาพได้'));
+        img.src = e.target.result;
+      };
+      reader.onerror = () => reject(new Error('ไม่สามารถอ่านไฟล์ได้'));
+      reader.readAsDataURL(file);
+    });
+  }
+
   // ══════════════════════════════════════
   // INIT
   // ══════════════════════════════════════
@@ -107,7 +131,11 @@ const App = (() => {
     const el = document.getElementById('header-member-name');
     const av = document.getElementById('header-avatar');
     if (el) el.textContent = currentMember ? currentMember.name : 'ครอบครัว';
-    if (av && currentMember && currentMember.avatarColor) {
+    const photo = localStorage.getItem('bfm_profile_photo');
+    if (av && photo) {
+      av.style.background = 'none';
+      av.innerHTML = `<img src="${photo}" class="header-avatar-img">`;
+    } else if (av && currentMember && currentMember.avatarColor) {
       av.style.background = currentMember.avatarColor;
       av.textContent = '';
       av.innerHTML = `<span style="font-size:0.85rem;font-weight:700;color:#fff">${currentMember.name.charAt(0).toUpperCase()}</span>`;
@@ -1145,13 +1173,19 @@ const App = (() => {
       const avatarColor = profile.avatarColor || '#1a3a6b';
       const name = profile.displayName || 'ยังไม่ได้ตั้งชื่อ';
       const email = profile.email || '';
+      const photo = profile.profilePhoto || localStorage.getItem('bfm_profile_photo') || '';
+      if (photo) localStorage.setItem('bfm_profile_photo', photo);
+
+      const avatarContent = photo
+        ? `<img src="${photo}" class="profile-photo-img">`
+        : `<span class="profile-initial">${initials}</span>`;
 
       el.innerHTML = `
         <div class="profile-page">
           <div class="profile-card">
-            <div class="profile-avatar-lg" id="avatar-picker" style="background:${avatarColor}">
-              <span class="profile-initial">${initials}</span>
-              <div class="profile-avatar-edit">${mi('edit', 'mi-sm')}</div>
+            <div class="profile-avatar-lg" id="avatar-picker" style="background:${photo ? 'none' : avatarColor}">
+              ${avatarContent}
+              <div class="profile-avatar-edit">${mi('photo_camera', 'mi-sm')}</div>
             </div>
             <div class="profile-name">${name}</div>
             ${email ? `<div class="profile-email">${email}</div>` : ''}
@@ -1227,7 +1261,13 @@ const App = (() => {
 
         <div id="color-modal" class="form-overlay hidden">
           <div class="form-modal">
-            <h3>เลือกสีโปรไฟล์</h3>
+            <h3>${mi('account_circle', 'mi-sm')} เปลี่ยนรูปโปรไฟล์</h3>
+            <div class="avatar-options">
+              <button type="button" class="btn btn-primary btn-full" id="btn-upload-photo" style="margin-bottom:8px">${mi('photo_camera', 'mi-sm')} อัพโหลดรูปภาพ</button>
+              <input type="file" id="photo-input" accept="image/*" style="display:none">
+              ${photo ? `<button type="button" class="btn btn-danger btn-full" id="btn-remove-photo" style="margin-bottom:12px">${mi('delete', 'mi-sm')} ลบรูปภาพ</button>` : ''}
+            </div>
+            <div style="font-size:0.82rem;font-weight:600;color:var(--text-secondary);margin-bottom:10px">หรือเลือกสี</div>
             <div class="color-grid">${
               ['#1a3a6b','#2d5aa0','#3b82f6','#6366f1','#8b5cf6','#a855f7',
                '#ec4899','#ef4444','#f59e0b','#f97316','#22c55e','#06b6d4',
@@ -1235,7 +1275,7 @@ const App = (() => {
                 `<button type="button" class="color-btn" data-color="${c}" style="background:${c}"></button>`
               ).join('')}
             </div>
-            <button class="btn btn-outline btn-full" id="btn-close-color">ปิด</button>
+            <button class="btn btn-outline btn-full" id="btn-close-color" style="margin-top:12px">ปิด</button>
           </div>
         </div>
 
@@ -1257,15 +1297,54 @@ const App = (() => {
           </div>
         </div>`;
 
-      // Color picker
+      // Avatar picker (photo + color)
       document.getElementById('avatar-picker').addEventListener('click', () => document.getElementById('color-modal').classList.remove('hidden'));
       document.getElementById('btn-close-color').addEventListener('click', () => document.getElementById('color-modal').classList.add('hidden'));
+
+      // Photo upload
+      document.getElementById('btn-upload-photo').addEventListener('click', () => document.getElementById('photo-input').click());
+      document.getElementById('photo-input').addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        try {
+          const dataUrl = await compressImage(file, 200, 0.8);
+          localStorage.setItem('bfm_profile_photo', dataUrl);
+          document.querySelector('.profile-avatar-lg').style.background = 'none';
+          document.querySelector('.profile-avatar-lg').querySelector('.profile-initial, .profile-photo-img, .mi')?.remove();
+          const img = document.createElement('img');
+          img.className = 'profile-photo-img';
+          img.src = dataUrl;
+          document.querySelector('.profile-avatar-lg').prepend(img);
+          document.getElementById('color-modal').classList.add('hidden');
+          updateHeaderAvatar();
+          showToast('อัพโหลดรูปสำเร็จ');
+          try { await API.updateProfile({ profilePhoto: dataUrl }); profileCache.profilePhoto = dataUrl; } catch {}
+        } catch (err) { showToast('ไม่สามารถอัพโหลดรูปได้', 'error'); }
+        e.target.value = '';
+      });
+
+      // Remove photo
+      const removeBtn = document.getElementById('btn-remove-photo');
+      if (removeBtn) {
+        removeBtn.addEventListener('click', async () => {
+          localStorage.removeItem('bfm_profile_photo');
+          document.getElementById('color-modal').classList.add('hidden');
+          try { await API.updateProfile({ profilePhoto: '' }); profileCache.profilePhoto = ''; } catch {}
+          updateHeaderAvatar();
+          renderProfile(el);
+          showToast('ลบรูปสำเร็จ');
+        });
+      }
+
       document.querySelectorAll('.color-btn').forEach(btn => {
         btn.addEventListener('click', async () => {
           const color = btn.dataset.color;
+          localStorage.removeItem('bfm_profile_photo');
           document.querySelector('.profile-avatar-lg').style.background = color;
+          const oldImg = document.querySelector('.profile-avatar-lg .profile-photo-img');
+          if (oldImg) { oldImg.remove(); const sp = document.createElement('span'); sp.className = 'profile-initial'; sp.textContent = initials; document.querySelector('.profile-avatar-lg').prepend(sp); }
           document.getElementById('color-modal').classList.add('hidden');
-          try { await API.updateProfile({ avatarColor: color }); profileCache.avatarColor = color; updateHeaderAvatar(); } catch {}
+          try { await API.updateProfile({ avatarColor: color, profilePhoto: '' }); profileCache.avatarColor = color; profileCache.profilePhoto = ''; updateHeaderAvatar(); } catch {}
         });
       });
 
