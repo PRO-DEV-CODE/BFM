@@ -49,36 +49,132 @@ a { color: var(--accent); text-decoration: none; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 
-/* ── Auth Screen ── */
-.auth-screen {
-  display: flex; align-items: center; justify-content: center;
-  min-height: 100dvh; padding: 1.5rem; background: var(--bg);
+/* ── Login Screen (Banking Style) ── */
+.login-screen {
+  display: flex; flex-direction: column; align-items: center;
+  min-height: 100dvh; padding: 2rem 1.5rem 1.5rem;
+  background: linear-gradient(180deg, #0d1b3e 0%, #162d5a 40%, #1a3a6b 100%);
+  color: #fff; position: relative; overflow: hidden;
 }
-.auth-card {
-  background: var(--bg-white); border-radius: var(--radius);
-  padding: 2.5rem 2rem; width: 100%; max-width: 380px;
-  text-align: center; box-shadow: var(--shadow-lg);
+.login-screen::before {
+  content: ''; position: absolute; top: -60%; left: -30%; width: 160%; height: 120%;
+  background: radial-gradient(ellipse at center, rgba(59,130,246,0.08) 0%, transparent 70%);
+  pointer-events: none;
 }
-.auth-logo { font-size: 3rem; margin-bottom: 0.5rem; }
-.auth-card h1 { font-size: 1.8rem; font-weight: 700; color: var(--primary); margin-bottom: 0.25rem; }
-.auth-subtitle { color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.9rem; }
-.auth-hint { color: var(--text-muted); font-size: 0.75rem; margin-top: 0.75rem; }
-.auth-form { text-align: left; }
-.auth-form label { display: block; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.3rem; }
 
-/* PIN */
-.pin-dots { display: flex; justify-content: center; gap: 14px; margin-bottom: 1.5rem; }
-.dot { width: 16px; height: 16px; border: 2px solid var(--primary); border-radius: 50%; transition: background 0.15s; }
-.dot.filled { background: var(--primary); }
-.pin-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-width: 260px; margin: 0 auto; }
-.pin-key {
-  background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-xs);
-  color: var(--text); font-size: 1.4rem; font-family: inherit; padding: 14px; cursor: pointer;
-  transition: background 0.15s, transform 0.1s; -webkit-tap-highlight-color: transparent;
+.login-header {
+  width: 100%; display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 2rem; position: relative; z-index: 1;
 }
-.pin-key:active { background: var(--primary); color: #fff; transform: scale(0.95); }
-.pin-key.empty { visibility: hidden; }
-.pin-key.pin-del { font-size: 1.2rem; }
+.login-brand { display: flex; align-items: center; gap: 10px; }
+.login-brand-icon { font-size: 1.3rem; }
+.login-brand-name {
+  font-size: 1rem; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; color: rgba(255,255,255,0.9);
+}
+
+.login-avatar { margin-bottom: 1.5rem; position: relative; z-index: 1; }
+.login-avatar-ring {
+  width: 88px; height: 88px; border-radius: 50%;
+  background: linear-gradient(135deg, rgba(59,130,246,0.3), rgba(59,130,246,0.1));
+  border: 2px solid rgba(59,130,246,0.4);
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(8px);
+}
+.login-shield-icon { width: 48px; height: 48px; color: rgba(255,255,255,0.85); }
+
+.login-title {
+  font-size: 1.6rem; font-weight: 700; margin-bottom: 0.4rem;
+  position: relative; z-index: 1; letter-spacing: -0.01em;
+}
+.login-subtitle {
+  font-size: 0.85rem; color: rgba(255,255,255,0.55);
+  margin-bottom: 0.15rem; position: relative; z-index: 1;
+}
+.login-subtitle-en {
+  font-size: 0.75rem; color: rgba(255,255,255,0.35);
+  margin-bottom: 2rem; position: relative; z-index: 1;
+}
+
+/* PIN Dots */
+.login-dots {
+  display: flex; justify-content: center; gap: 16px;
+  margin-bottom: 2rem; position: relative; z-index: 1;
+}
+.login-dot {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.35);
+  background: transparent; transition: all 0.2s ease;
+}
+.login-dot.filled {
+  background: #3b82f6; border-color: #3b82f6;
+  box-shadow: 0 0 12px rgba(59,130,246,0.5);
+}
+.login-dots.shake { animation: dotShake 0.4s ease; }
+@keyframes dotShake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-8px); }
+  40%, 80% { transform: translateX(8px); }
+}
+
+.login-error {
+  color: #fca5a5; font-size: 0.8rem; text-align: center;
+  margin: -1rem 0 1rem; position: relative; z-index: 1;
+}
+
+/* Number Pad */
+.login-numpad {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 12px; max-width: 280px; width: 100%;
+  margin: 0 auto 1.5rem; position: relative; z-index: 1;
+}
+.numpad-key {
+  width: 72px; height: 72px; border-radius: 50%;
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+  color: #fff; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  cursor: pointer; transition: all 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  font-family: inherit; margin: 0 auto;
+}
+.numpad-key:active, .numpad-key.pressed {
+  background: rgba(59,130,246,0.3); border-color: rgba(59,130,246,0.5);
+  transform: scale(0.93);
+}
+.numpad-num { font-size: 1.5rem; font-weight: 500; line-height: 1.2; }
+.numpad-letters { font-size: 0.55rem; letter-spacing: 0.15em; color: rgba(255,255,255,0.4); margin-top: 1px; }
+
+.numpad-bio {
+  background: transparent; border-color: transparent;
+}
+.numpad-bio-icon { font-size: 1.5rem; }
+.numpad-del {
+  background: transparent; border-color: transparent;
+  color: rgba(255,255,255,0.6);
+}
+.numpad-del:active { color: #fff; background: rgba(255,255,255,0.08); }
+
+.login-hint {
+  font-size: 0.75rem; color: rgba(255,255,255,0.4);
+  text-align: center; margin-bottom: 1rem; position: relative; z-index: 1;
+}
+
+.login-forgot-btn {
+  background: none; border: none; color: rgba(59,130,246,0.8);
+  font-size: 0.8rem; font-family: inherit; cursor: pointer;
+  margin-bottom: 1.5rem; position: relative; z-index: 1;
+  padding: 8px 16px; transition: color 0.2s;
+}
+.login-forgot-btn:hover { color: #60a5fa; }
+
+.login-footer {
+  margin-top: auto; padding-top: 1rem;
+  position: relative; z-index: 1;
+}
+.login-footer-text {
+  font-size: 0.6rem; letter-spacing: 0.2em;
+  color: rgba(255,255,255,0.2); text-transform: uppercase;
+}
 
 /* Error / Toast */
 .error-msg { color: var(--danger); font-size: 0.85rem; margin-top: 0.75rem; text-align: center; }
