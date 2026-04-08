@@ -37,11 +37,15 @@ const App = (() => {
   function showToast(msg, type = 'success') {
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
-    const icon = type === 'error' ? 'error' : 'notifications';
-    toast.innerHTML = `<span class="mi" style="font-size:1.1rem;vertical-align:middle;margin-right:6px">${icon}</span>${msg}`;
+    const iconName = type === 'error' ? 'error' : 'notifications_active';
+    const badgeIcon = type === 'error' ? 'close' : 'check';
+    toast.innerHTML = `
+      <div class="toast-icon"><span class="mi">${iconName}</span></div>
+      <div class="toast-body">${msg}</div>
+      <div class="toast-badge"><span class="mi" style="font-size:0.85rem">${badgeIcon}</span></div>`;
     document.body.appendChild(toast);
     setTimeout(() => toast.classList.add('show'), 10);
-    setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 2500);
+    setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 400); }, 2800);
   }
 
   // ── Category Icon Mapping (Material Symbols names) ──
