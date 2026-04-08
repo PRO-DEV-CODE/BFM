@@ -994,6 +994,9 @@ const App = (() => {
     function showReminderForm(editData = null) {
       const isEdit = !!editData;
       formContainer.classList.remove('hidden');
+      const remCats = ['ค่ารถ','ค่าบ้าน/เช่า','ค่าน้ำ/ไฟ/เน็ต','ค่าบัตรเครดิต','พรบ./ประกัน','ค่าโทรศัพท์','ค่าเดินทาง','การศึกษา','สุขภาพ','สมาชิก/Subscription','อื่นๆ'];
+      const catOptions = remCats.map(c => `<option value="${c}" ${editData?.category === c ? 'selected' : ''}>${c}</option>`).join('');
+      const notifyDaysOpts = [1,2,3,5,7,14,30].map(d => `<option value="${d}" ${(editData?.notifyDaysBefore ?? 3) == d ? 'selected' : ''}>${d} วัน</option>`).join('');
       formContainer.innerHTML = `
         <div class="form-overlay"><div class="form-modal">
           <h3>${isEdit ? mi('edit', 'mi-sm') + ' แก้ไขแจ้งเตือน' : mi('add_circle', 'mi-sm') + ' เพิ่มแจ้งเตือน'}</h3>
@@ -1006,8 +1009,8 @@ const App = (() => {
               <option value="monthly" ${editData?.frequency === 'monthly' ? 'selected' : ''}>รายเดือน</option>
               <option value="yearly" ${editData?.frequency === 'yearly' ? 'selected' : ''}>รายปี</option>
             </select></div>
-            <div class="form-group"><label>หมวดหมู่</label><input type="text" id="rem-cat" class="input-field" value="${editData?.category || ''}"></div>
-            <div class="form-group"><label>แจ้งเตือนก่อนกี่วัน</label><input type="number" id="rem-notify-days" class="input-field" min="0" max="30" value="${editData?.notifyDaysBefore ?? 3}"></div>
+            <div class="form-group"><label>หมวดหมู่</label><select id="rem-cat" class="input-field">${catOptions}</select></div>
+            <div class="form-group"><label>แจ้งเตือนก่อนกี่วัน</label><select id="rem-notify-days" class="input-field">${notifyDaysOpts}</select></div>
             <div class="form-buttons">
               <button type="button" class="btn btn-outline" id="btn-cancel-rem">ยกเลิก</button>
               <button type="submit" class="btn btn-primary" id="btn-save-rem">${isEdit ? 'บันทึก' : 'เพิ่ม'}</button>
