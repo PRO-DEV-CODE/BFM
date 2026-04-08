@@ -777,7 +777,10 @@ const App = (() => {
       // Swipe-to-action on each row
       container.querySelectorAll('.hist-txn-row').forEach(row => {
         let startX = 0, currentX = 0, swiping = false;
-        row.addEventListener('touchstart', e => { startX = e.touches[0].clientX; swiping = true; }, { passive: true });
+        row.addEventListener('touchstart', e => {
+          if (e.target.closest('.hist-del-btn')) return;
+          startX = e.touches[0].clientX; swiping = true;
+        }, { passive: true });
         row.addEventListener('touchmove', e => {
           if (!swiping) return;
           currentX = e.touches[0].clientX - startX;
@@ -791,7 +794,8 @@ const App = (() => {
           } else { row.style.transform = ''; hideRowActions(row); }
           currentX = 0;
         });
-        row.addEventListener('click', () => {
+        row.addEventListener('click', (e) => {
+          if (e.target.closest('.hist-del-btn') || e.target.closest('.hist-row-actions')) return;
           if (Math.abs(currentX) < 10) {
             const txn = allTxns.find(t => t.id === row.dataset.id);
             if (txn) renderAddTransaction(document.getElementById('main-content'), txn);
