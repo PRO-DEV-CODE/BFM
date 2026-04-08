@@ -360,17 +360,14 @@ const Auth = (() => {
           API.setSecret(res.secret);
           if (res.member) { localStorage.setItem('bfm_login_member', JSON.stringify(res.member)); localStorage.setItem('bfm_current_member', res.member.id); }
           setAuthenticated(true);
-          if (await isBiometricAvailable()) {
-            const ok = await showBioPrompt(container);
-            if (ok) { try { await registerBiometric(pin); } catch {} }
-          }
           onSuccess();
         });
         bindLoginNav();
       } else {
+        container.innerHTML = renderPinScreen(false);
+
         const bioAvail = await isBiometricAvailable();
         const bioReg = isBiometricRegistered();
-        container.innerHTML = renderPinScreen(false);
 
         // Wire biometric login
         const bioCard = document.getElementById('login-bio-card');
@@ -404,9 +401,9 @@ const Auth = (() => {
           API.setSecret(res.secret);
           if (res.member) { localStorage.setItem('bfm_login_member', JSON.stringify(res.member)); localStorage.setItem('bfm_current_member', res.member.id); }
           setAuthenticated(true);
+          // Auto-register biometric without asking
           if (bioAvail && !isBiometricRegistered()) {
-            const ok = await showBioPrompt(container);
-            if (ok) { try { await registerBiometric(pin); } catch {} }
+            try { await registerBiometric(pin); } catch {}
           }
           onSuccess();
         }, bioAvail && bioReg ? doBioLogin : null);
