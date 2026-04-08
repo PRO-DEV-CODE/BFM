@@ -782,25 +782,34 @@ const App = (() => {
       });
     }
 
+    function canDelete(txn) {
+      if (isAdmin()) return true;
+      if (!loginMember) return false;
+      return txn.createdBy === loginMember.name;
+    }
+
     function showRowActions(row) {
       if (row.querySelector('.hist-row-actions')) return;
+      const txn = allTxns.find(t => t.id === row.dataset.id);
       const actions = document.createElement('div');
       actions.className = 'hist-row-actions';
+      const showDel = txn && canDelete(txn);
       actions.innerHTML = `
         <button class="hist-act-btn edit">${mi('edit', 'mi-sm')}</button>
-        <button class="hist-act-btn delete">${mi('delete', 'mi-sm')}</button>`;
+        ${showDel ? `<button class="hist-act-btn delete">${mi('delete', 'mi-sm')}</button>` : ''}`;
       row.appendChild(actions);
       actions.querySelector('.edit').addEventListener('click', (e) => {
         e.stopPropagation();
-        const txn = allTxns.find(t => t.id === row.dataset.id);
         if (txn) renderAddTransaction(document.getElementById('main-content'), txn);
       });
-      actions.querySelector('.delete').addEventListener('click', async (e) => {
-        e.stopPropagation();
-        if (!confirm('ลบรายการนี้?')) return;
-        try { await API.deleteTransaction(row.dataset.id); showToast('ลบสำเร็จ'); loadTransactions(); }
-        catch (err) { showToast(err.message, 'error'); }
-      });
+      if (showDel) {
+        actions.querySelector('.delete').addEventListener('click', async (e) => {
+          e.stopPropagation();
+          if (!confirm('ลบรายการนี้?')) return;
+          try { await API.deleteTransaction(row.dataset.id); showToast('ลบสำเร็จ'); loadTransactions(); }
+          catch (err) { showToast(err.message, 'error'); }
+        });
+      }
     }
 
     function hideRowActions(row) {
