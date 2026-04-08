@@ -1432,7 +1432,7 @@ const App = (() => {
               <div class="notif-pref-icon" style="background:#dcfce7;color:#22c55e">${mi('smartphone')}</div>
               <div class="notif-pref-info">
                 <div class="notif-pref-name">LINE Notify</div>
-                <div class="notif-pref-desc">${settings?.hasLineToken ? mi('check_circle', 'mi-sm') + ' เชื่อมต่อแล้ว' : 'ยังไม่ได้เชื่อมต่อ'}</div>
+                <div class="notif-pref-desc">${settings?.hasLineToken && settings?.hasLineGroupId ? mi('check_circle', 'mi-sm') + ' เชื่อมต่อแล้ว' : 'ยังไม่ได้เชื่อมต่อ'}</div>
               </div>
               <button class="btn-sm" onclick="App.navigate('settings')">ตั้งค่า</button>
             </div>
@@ -1590,10 +1590,10 @@ const App = (() => {
           <button class="btn btn-primary btn-full" id="btn-change-pin">เปลี่ยน PIN</button>
         </div>
         <div class="settings-group">
-          <h3>${mi('smartphone', 'mi-sm')} LINE Notify</h3>
-          <p class="settings-hint">ลงทะเบียนที่ <a href="https://notify-bot.line.me/" target="_blank" rel="noopener">notify-bot.line.me</a></p>
-          <div class="form-group"><input type="text" id="line-token" class="input-field" placeholder="LINE Notify Access Token"></div>
-          <button class="btn btn-primary btn-full" id="btn-save-line">บันทึก LINE Token</button>
+          <h3>${mi('smartphone', 'mi-sm')} LINE Messaging API</h3>
+          <div class="form-group"><label>Group ID</label><input type="text" id="line-group-id" class="input-field" placeholder="LINE Group ID"></div>
+          <div class="form-group"><label>Channel Access Token</label><input type="text" id="line-token" class="input-field" placeholder="LINE Channel Access Token"></div>
+          <button class="btn btn-primary btn-full" id="btn-save-line">${mi('save', 'mi-sm')} บันทึก LINE</button>
           <p id="line-status" class="settings-hint"></p>
         </div>
         <div class="settings-group">
@@ -1619,12 +1619,20 @@ const App = (() => {
     });
 
     const lineStatus = document.getElementById('line-status');
-    if (settings?.hasLineToken) lineStatus.innerHTML = mi('check_circle', 'mi-sm') + ' ตั้ง LINE Token แล้ว';
+    if (settings?.hasLineToken && settings?.hasLineGroupId) lineStatus.innerHTML = mi('check_circle', 'mi-sm') + ' เชื่อมต่อ LINE แล้ว';
+    else if (settings?.hasLineToken || settings?.hasLineGroupId) lineStatus.innerHTML = mi('warning', 'mi-sm') + ' กรุณาใส่ทั้ง Group ID และ Token';
     document.getElementById('btn-save-line').addEventListener('click', async () => {
+      const groupId = document.getElementById('line-group-id').value.trim();
       const token = document.getElementById('line-token').value.trim();
-      if (!token) { showToast('กรุณาใส่ Token', 'error'); return; }
-      try { await API.updateSetting('lineToken', token); showToast('บันทึกสำเร็จ'); lineStatus.innerHTML = mi('check_circle', 'mi-sm') + ' ตั้ง LINE Token แล้ว'; document.getElementById('line-token').value = ''; }
-      catch (err) { showToast(err.message, 'error'); }
+      if (!groupId && !token) { showToast('กรุณาใส่ข้อมูล', 'error'); return; }
+      try {
+        if (groupId) await API.updateSetting('lineGroupId', groupId);
+        if (token) await API.updateSetting('lineToken', token);
+        showToast('บันทึกสำเร็จ');
+        lineStatus.innerHTML = mi('check_circle', 'mi-sm') + ' เชื่อมต่อ LINE แล้ว';
+        document.getElementById('line-group-id').value = '';
+        document.getElementById('line-token').value = '';
+      } catch (err) { showToast(err.message, 'error'); }
     });
 
     function renderCatTags(containerId, cats, type) {

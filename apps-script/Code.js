@@ -13,10 +13,6 @@ const SH_SUMMARY = 'MonthlySummary';
 const SH_PROFILE = 'Profile';
 const SH_MEMBERS = 'Members';
 
-// ── LINE Messaging API ──
-var LINE_GROUP_ID = 'C3bbd5fc111e8c87464a264ae08e670ba';
-var LINE_TOKEN = 'DRz5joqy1uwKC3bwpVY1BtKXCraZcLWdllkD0NQ0e8e4WRSCZjhthZvQTy04n+OHN4so/kVSuP5rqfzKOCPUYi6JLAgaalaVVF2wPqpxWgiVOMC6PEJ7KfZhbHpKZ55cmgQ4UsrC56EzsFdziapeVAdB04t89/1O/w1cDnyilFU=';
-
 // ── Default Categories ──
 const DEFAULT_EXPENSE_CATS = JSON.stringify([
   'อาหาร','ค่าเดินทาง','ค่าบัตรเครดิต','พรบ./ประกัน',
@@ -94,6 +90,9 @@ function initSheets() {
   }
   if (keys.indexOf('lineToken') === -1) {
     settingsSheet.appendRow(['lineToken', '']);
+  }
+  if (keys.indexOf('lineGroupId') === -1) {
+    settingsSheet.appendRow(['lineGroupId', '']);
   }
   if (keys.indexOf('categories_expense') === -1) {
     settingsSheet.appendRow(['categories_expense', DEFAULT_EXPENSE_CATS]);
@@ -337,16 +336,18 @@ function getSettingsApi() {
   var cats_exp = getSetting('categories_expense') || DEFAULT_EXPENSE_CATS;
   var cats_inc = getSetting('categories_income') || DEFAULT_INCOME_CATS;
   var lineToken = getSetting('lineToken') || '';
+  var lineGroupId = getSetting('lineGroupId') || '';
   return jsonOk({
     categories_expense: JSON.parse(cats_exp),
     categories_income: JSON.parse(cats_inc),
-    hasLineToken: !!lineToken
+    hasLineToken: !!lineToken,
+    hasLineGroupId: !!lineGroupId
   });
 }
 
 function updateSettingApi(key, value) {
   // Only allow specific keys to be updated
-  var allowed = ['lineToken', 'categories_expense', 'categories_income'];
+  var allowed = ['lineToken', 'lineGroupId', 'categories_expense', 'categories_income'];
   if (allowed.indexOf(key) === -1) return jsonErr('ไม่อนุญาตให้แก้ไข setting นี้');
   if (key === 'categories_expense' || key === 'categories_income') {
     value = JSON.stringify(value);
@@ -653,24 +654,28 @@ function getYearlySummary(year) {
 }
 
 // ══════════════════════════════════════
-// LINE NOTIFY
+// LINE MESSAGING API
 // ══════════════════════════════════════
 function sendLineNotify(message) {
-  var token = getSetting('lineToken');
-  if (!token) {
-    Logger.log('LINE Token not set');
-    return false;
+  try {
+    var token = getSetting('lineToken');
+    var groupId = getSetting('lineGroupId');
+    if (!token || !groupId) { Logger.log('LINE not configured'); return; }
+    var url = 'https://api.line.me/v2/bot/message/push';
+    var payload = {
+      to: groupId,
+      messages: [{ type: 'text', text: '🏦 THE PRIVATE BANK\n─────────────\n' + message }]
+    };
+    UrlFetchApp.fetch(url, {
+      method: 'post',
+      contentType: 'application/json',
+      headers: { 'Authorization': 'Bearer ' + token },
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    });
+  } catch (e) {
+    Logger.log('LINE notify error: ' + e);
   }
-  var url = 'https://notify-api.line.me/api/notify';
-  var options = {
-    method: 'post',
-    headers: { 'Authorization': 'Bearer ' + token },
-    payload: { message: message },
-    muteHttpExceptions: true
-  };
-  var response = UrlFetchApp.fetch(url, options);
-  Logger.log('LINE Notify response: ' + response.getContentText());
-  return response.getResponseCode() === 200;
 }
 
 // ══════════════════════════════════════
@@ -889,28 +894,8 @@ function deleteMemberApi(id) {
 }
 
 // ══════════════════════════════════════
-// LINE MESSAGING API
+// LINE MESSAGING API (duplicate removed)
 // ══════════════════════════════════════
 function formatMoney(n) {
   return Number(n || 0).toLocaleString('th-TH');
-}
-
-function sendLineNotify(message) {
-  try {
-    var url = 'https://api.line.me/v2/bot/message/push';
-    var payload = {
-      to: LINE_GROUP_ID,
-      messages: [{ type: 'text', text: '🏦 THE PRIVATE BANK\n─────────────\n' + message }]
-    };
-    UrlFetchApp.fetch(url, {
-      method: 'post',
-      contentType: 'application/json',
-      headers: { 'Authorization': 'Bearer ' + LINE_TOKEN },
-      payload: JSON.stringify(payload),
-      muteHttpExceptions: true
-    });
-  } catch (e) {
-    // Silent fail — don't break main operation
-    Logger.log('LINE notify error: ' + e);
-  }
 }
