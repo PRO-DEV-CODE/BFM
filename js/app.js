@@ -1585,16 +1585,21 @@ const App = (() => {
       <div class="settings-page">
         <div class="settings-group">
           <h3>${mi('key', 'mi-sm')} เปลี่ยน PIN</h3>
-          <div class="form-group"><input type="password" id="old-pin" class="input-field" placeholder="PIN เดิม" inputmode="numeric" maxlength="6"></div>
-          <div class="form-group"><input type="password" id="new-pin" class="input-field" placeholder="PIN ใหม่ (4-6 หลัก)" inputmode="numeric" maxlength="6"></div>
-          <button class="btn btn-primary btn-full" id="btn-change-pin">เปลี่ยน PIN</button>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div class="form-group"><label>PIN เดิม</label><input type="password" id="old-pin" class="input-field" placeholder="กรอก PIN เดิม" inputmode="numeric" maxlength="6"></div>
+            <div class="form-group"><label>PIN ใหม่</label><input type="password" id="new-pin" class="input-field" placeholder="PIN ใหม่ (4-6 หลัก)" inputmode="numeric" maxlength="6"></div>
+          </div>
+          <button class="btn btn-primary btn-full" id="btn-change-pin" style="margin-top:12px">เปลี่ยน PIN</button>
         </div>
         <div class="settings-group">
           <h3>${mi('smartphone', 'mi-sm')} LINE Messaging API</h3>
-          <div class="form-group"><label>Group ID</label><input type="text" id="line-group-id" class="input-field" placeholder="LINE Group ID"></div>
-          <div class="form-group"><label>Channel Access Token</label><input type="text" id="line-token" class="input-field" placeholder="LINE Channel Access Token"></div>
-          <button class="btn btn-primary btn-full" id="btn-save-line">${mi('save', 'mi-sm')} บันทึก LINE</button>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div class="form-group"><label>Group ID</label><input type="text" id="line-group-id" class="input-field" placeholder="LINE Group ID"></div>
+            <div class="form-group"><label>Channel Access Token</label><input type="text" id="line-token" class="input-field" placeholder="LINE Channel Access Token"></div>
+          </div>
+          <button class="btn btn-primary btn-full" id="btn-save-line" style="margin-top:12px">${mi('save', 'mi-sm')} บันทึก LINE</button>
           <p id="line-status" class="settings-hint"></p>
+          <div id="line-saved-info" class="settings-hint" style="margin-top:4px"></div>
         </div>
         <div class="settings-group">
           <h3>${mi('label', 'mi-sm')} หมวดหมู่รายจ่าย</h3>
@@ -1619,8 +1624,18 @@ const App = (() => {
     });
 
     const lineStatus = document.getElementById('line-status');
-    if (settings?.hasLineToken && settings?.hasLineGroupId) lineStatus.innerHTML = mi('check_circle', 'mi-sm') + ' เชื่อมต่อ LINE แล้ว';
-    else if (settings?.hasLineToken || settings?.hasLineGroupId) lineStatus.innerHTML = mi('warning', 'mi-sm') + ' กรุณาใส่ทั้ง Group ID และ Token';
+    const lineSavedInfo = document.getElementById('line-saved-info');
+    function showLineSaved(gid, tok) {
+      const parts = [];
+      if (gid) parts.push('Group: ' + gid.substring(0, 6) + '...' + gid.slice(-4));
+      if (tok) parts.push('Token: ' + tok.substring(0, 8) + '...' + tok.slice(-4));
+      lineSavedInfo.textContent = parts.join(' \u00b7 ');
+    }
+    if (settings?.hasLineToken && settings?.hasLineGroupId) {
+      lineStatus.innerHTML = mi('check_circle', 'mi-sm') + ' เชื่อมต่อ LINE แล้ว';
+    } else if (settings?.hasLineToken || settings?.hasLineGroupId) {
+      lineStatus.innerHTML = mi('warning', 'mi-sm') + ' กรุณาใส่ทั้ง Group ID และ Token';
+    }
     document.getElementById('btn-save-line').addEventListener('click', async () => {
       const groupId = document.getElementById('line-group-id').value.trim();
       const token = document.getElementById('line-token').value.trim();
@@ -1630,6 +1645,7 @@ const App = (() => {
         if (token) await API.updateSetting('lineToken', token);
         showToast('บันทึกสำเร็จ');
         lineStatus.innerHTML = mi('check_circle', 'mi-sm') + ' เชื่อมต่อ LINE แล้ว';
+        showLineSaved(groupId || 'คงเดิม', token || 'คงเดิม');
         document.getElementById('line-group-id').value = '';
         document.getElementById('line-token').value = '';
       } catch (err) { showToast(err.message, 'error'); }
