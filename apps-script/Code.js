@@ -13,6 +13,10 @@ const SH_SUMMARY = 'MonthlySummary';
 const SH_PROFILE = 'Profile';
 const SH_MEMBERS = 'Members';
 
+// ── LINE Messaging API ──
+var LINE_GROUP_ID = 'C3bbd5fc111e8c87464a264ae08e670ba';
+var LINE_TOKEN = 'DRz5joqy1uwKC3bwpVY1BtKXCraZcLWdllkD0NQ0e8e4WRSCZjhthZvQTy04n+OHN4so/kVSuP5rqfzKOCPUYi6JLAgaalaVVF2wPqpxWgiVOMC6PEJ7KfZhbHpKZ55cmgQ4UsrC56EzsFdziapeVAdB04t89/1O/w1cDnyilFU=';
+
 // ── Default Categories ──
 const DEFAULT_EXPENSE_CATS = JSON.stringify([
   'อาหาร','ค่าเดินทาง','ค่าบัตรเครดิต','พรบ./ประกัน',
@@ -358,16 +362,22 @@ function addTransaction(p) {
   var sheet = getSpreadsheet().getSheetByName(SH_TRANSACTIONS);
   var id = uuid();
   var now = new Date().toISOString();
-  sheet.appendRow([
-    id,
-    p.date || Utilities.formatDate(new Date(), 'Asia/Bangkok', 'yyyy-MM-dd'),
-    p.type || 'expense',
-    p.category || 'อื่นๆ',
-    Number(p.amount) || 0,
-    p.description || '',
-    now,
-    p.createdBy || ''
-  ]);
+  var amount = Number(p.amount) || 0;
+  var type = p.type || 'expense';
+  var category = p.category || 'อื่นๆ';
+  var desc = p.description || '';
+  var date = p.date || Utilities.formatDate(new Date(), 'Asia/Bangkok', 'yyyy-MM-dd');
+  sheet.appendRow([id, date, type, category, amount, desc, now, p.createdBy || '']);
+  // LINE notify
+  var icon = type === 'income' ? '💰' : '💸';
+  var label = type === 'income' ? 'รายรับ' : 'รายจ่าย';
+  var msg = icon + ' ' + label + '\n'
+    + '📂 ' + category + '\n'
+    + '💵 ' + formatMoney(amount) + ' บาท\n'
+    + (desc ? '📝 ' + desc + '\n' : '')
+    + '📅 ' + date
+    + (p.createdBy ? '\n👤 ' + p.createdBy : '');
+  sendLineNotify(msg);
   return jsonOk({ id: id });
 }
 
@@ -840,6 +850,7 @@ function addMemberApi(p) {
     hashedPin,
     new Date().toISOString()
   ]);
+  sendLineNotify('👤 สมาชิกใหม่ «' + String(p.name).trim() + '» เข้าร่วมครอบครัวแล้ว (' + (p.role === 'admin' ? 'ผู้ดูแล' : 'สมาชิก') + ')');
   return jsonOk({ id: id, name: String(p.name).trim(), avatarColor: p.avatarColor || '#1a3a6b', role: p.role || 'member' });
 }
 
@@ -868,9 +879,38 @@ function deleteMemberApi(id) {
   var data = sheet.getDataRange().getValues();
   for (var i = 1; i < data.length; i++) {
     if (data[i][0] === id) {
+      var name = data[i][1];
       sheet.deleteRow(i + 1);
+      sendLineNotify('🗑️ ลบสมาชิก «' + name + '» ออกจากครอบครัวแล้ว');
       return jsonOk('ลบสำเร็จ');
     }
   }
   return jsonErr('ไม่พบสมาชิก');
+}
+
+// ══════════════════════════════════════
+// LINE MESSAGING API
+// ══════════════════════════════════════
+function formatMoney(n) {
+  return Number(n || 0).toLocaleString('th-TH');
+}
+
+function sendLineNotify(message) {
+  try {
+    var url = 'https://api.line.me/v2/bot/message/push';
+    var payload = {
+      to: LINE_GROUP_ID,
+      messages: [{ type: 'text', text: '🏦 THE PRIVATE BANK\n─────────────\n' + message }]
+    };
+    UrlFetchApp.fetch(url, {
+      method: 'post',
+      contentType: 'application/json',
+      headers: { 'Authorization': 'Bearer ' + LINE_TOKEN },
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    });
+  } catch (e) {
+    // Silent fail — don't break main operation
+    Logger.log('LINE notify error: ' + e);
+  }
 }
