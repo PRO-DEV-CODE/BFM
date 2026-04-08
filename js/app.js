@@ -8,6 +8,9 @@ const App = (() => {
   let profileCache = null;
   let membersCache = [];
   let currentMember = null; // { id, name, avatarColor, role }
+  let loginMember = null;  // The member who logged in (for permissions)
+
+  function isAdmin() { return loginMember && loginMember.role === 'admin'; }
 
   // ── Icon Helper ──
   function mi(name, cls = '') { return `<span class="mi ${cls}">${name}</span>`; }
@@ -108,13 +111,13 @@ const App = (() => {
   async function loadMembers() {
     try {
       membersCache = await API.getMembers() || [];
-      // Sync to localStorage as backup
       localStorage.setItem('bfm_members', JSON.stringify(membersCache));
     } catch {
-      // Fallback to localStorage when API doesn't support members yet
       try { membersCache = JSON.parse(localStorage.getItem('bfm_members') || '[]'); } catch { membersCache = []; }
     }
-    // Restore last selected member
+    // Restore login member (who authenticated)
+    try { loginMember = JSON.parse(localStorage.getItem('bfm_login_member') || 'null'); } catch { loginMember = null; }
+    // Restore current member
     const saved = localStorage.getItem('bfm_current_member');
     if (saved) {
       currentMember = membersCache.find(m => m.id === saved) || membersCache[0] || null;
@@ -248,11 +251,11 @@ const App = (() => {
     dropdown.innerHTML = `
       <div class="member-dd-header">สมาชิกครอบครัว</div>
       ${items || '<div class="member-dd-empty">ยังไม่มีสมาชิก</div>'}
-      <div class="member-dd-divider"></div>
+      ${isAdmin() ? `<div class="member-dd-divider"></div>
       <div class="member-dd-item member-dd-manage" id="dd-manage-members">
         ${mi('group_add', 'mi-sm')}
         <div class="member-dd-name">จัดการสมาชิก</div>
-      </div>`;
+      </div>` : ''}`;
 
     dropdown.querySelectorAll('.member-dd-item[data-mid]').forEach(el => {
       el.addEventListener('click', () => {
@@ -1218,7 +1221,7 @@ const App = (() => {
                 <div class="member-avatar" style="background:${m.avatarColor}">${m.name.charAt(0).toUpperCase()}</div>
                 <div class="member-info">
                   <div class="member-name">${m.name}</div>
-                  <div class="member-role">${m.role === 'admin' ? 'ผู้ดูแล' : 'สมาชิก'}</div>
+                  <div class="member-role">${m.role === 'admin' ? 'ผู้ดูแล' : 'สมาชิก'}${m.hasPin ? ' · 🔑 มี PIN' : ''}</div>
                 </div>
                 <div class="member-actions">
                   <button class="btn-icon member-edit" data-mid="${m.id}">${mi('edit', 'mi-sm')}</button>
@@ -1256,6 +1259,10 @@ const App = (() => {
                   <option value="admin">ผู้ดูแล</option>
                 </select>
               </div>
+              <div class="form-group">
+                <label>PIN เข้าใช้งาน (4-6 หลัก)</label>
+                <input type="password" id="mf-pin" class="input-field" inputmode="numeric" maxlength="6" minlength="4" placeholder="ปล่อยว่างถ้าไม่เปลี่ยน">
+              </div>
               <div class="form-buttons">
                 <button type="button" class="btn btn-outline" id="btn-cancel-member">ยกเลิก</button>
                 <button type="submit" class="btn btn-primary" id="btn-save-member">บันทึก</button>
@@ -1284,6 +1291,7 @@ const App = (() => {
         document.getElementById('mf-name').value = member ? member.name : '';
         document.getElementById('mf-color').value = member ? member.avatarColor : '#1a3a6b';
         document.getElementById('mf-role').value = member ? member.role : 'member';
+        document.getElementById('mf-pin').value = '';
         el.querySelectorAll('.mf-color-btn').forEach(b => {
           b.classList.toggle('selected', b.dataset.color === (member ? member.avatarColor : '#1a3a6b'));
         });
@@ -1321,15 +1329,21 @@ const App = (() => {
         const name = document.getElementById('mf-name').value.trim();
         const avatarColor = document.getElementById('mf-color').value;
         const role = document.getElementById('mf-role').value;
+        const pin = document.getElementById('mf-pin').value.trim();
         if (!name) { showToast('กรุณาใส่ชื่อ', 'error'); return; }
+        if (pin && (pin.length < 4 || pin.length > 6 || !/^\d+$/.test(pin))) { showToast('PIN ต้อง 4-6 หลัก (ตัวเลขเท่านั้น)', 'error'); return; }
         const btn = document.getElementById('btn-save-member');
         btn.disabled = true; btn.textContent = 'กำลังบันทึก...';
         try {
           if (id) {
-            await API.updateMember({ id, name, avatarColor, role });
+            const upd = { id, name, avatarColor, role };
+            if (pin) upd.pin = pin;
+            await API.updateMember(upd);
             showToast('แก้ไขสำเร็จ');
           } else {
-            await API.addMember({ name, avatarColor, role });
+            const add = { name, avatarColor, role };
+            if (pin) add.pin = pin;
+            await API.addMember(add);
             showToast('เพิ่มสมาชิกสำเร็จ');
           }
           document.getElementById('member-form-modal').classList.add('hidden');

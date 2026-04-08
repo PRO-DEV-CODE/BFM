@@ -75,7 +75,10 @@ function initSheets() {
   getOrCreateSheet(SH_PROFILE,
     ['key','value']);
   getOrCreateSheet(SH_MEMBERS,
-    ['id','name','avatarColor','role','createdAt']);
+    ['id','name','avatarColor','role','pin','createdAt']);
+
+  // Migrate old Members sheet (add pin column if needed)
+  migrateMembersSheet();
 
   // Seed default settings if empty
   const settingsSheet = getSpreadsheet().getSheetByName(SH_SETTINGS);
@@ -97,6 +100,9 @@ function initSheets() {
   if (keys.indexOf('apiSecret') === -1) {
     settingsSheet.appendRow(['apiSecret', uuid()]);
   }
+
+  // Seed admin member if needed
+  seedAdminIfNeeded();
 }
 
 // ── Router ──
@@ -143,7 +149,7 @@ function handleRequest(e) {
       // -- Auth --
       case 'ping':              return jsonOk({ pong: true });
       case 'init':              initSheets(); return jsonOk('initialized');
-      case 'checkPinExists':    return jsonOk({ exists: !!getSetting('pin') });
+      case 'checkPinExists':    return checkPinExistsApi();
       case 'setInitialPin':     return setInitialPin(p.pin);
       case 'verifyPin':         return verifyPin(p.pin);
 
@@ -191,34 +197,111 @@ function handleRequest(e) {
 }
 
 // ══════════════════════════════════════
-// AUTH
+// MIGRATION & SEED HELPERS
+// ══════════════════════════════════════
+function migrateMembersSheet() {
+  var sheet = getSpreadsheet().getSheetByName(SH_MEMBERS);
+  if (!sheet) return;
+  var lastCol = sheet.getLastColumn();
+  if (lastCol < 1) return;
+  var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  if (headers.indexOf('pin') >= 0) return;
+  if (lastCol >= 4 && String(headers[3]).toLowerCase() === 'role') {
+    sheet.insertColumnAfter(4);
+    sheet.getRange(1, 5).setValue('pin');
+    sheet.getRange(1, 5).setFontWeight('bold');
+  }
+}
+
+function seedAdminIfNeeded() {
+  var sheet = getSpreadsheet().getSheetByName(SH_MEMBERS);
+  if (!sheet) return;
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][3] === 'admin' && data[i][4]) return;
+  }
+  sheet.appendRow([uuid(), 'Admin', '#1a3a6b', 'admin', sha256('160538'), new Date().toISOString()]);
+}
+
+function checkPinExistsApi() {
+  migrateMembersSheet();
+  seedAdminIfNeeded();
+  var sheet = getSpreadsheet().getSheetByName(SH_MEMBERS);
+  if (!sheet) return jsonOk({ exists: false });
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][4]) return jsonOk({ exists: true });
+  }
+  return jsonOk({ exists: !!getSetting('pin') });
+}
+
+// ══════════════════════════════════════
+// AUTH (Per-Member PIN)
 // ══════════════════════════════════════
 function setInitialPin(pin) {
   if (!pin || pin.length < 4) return jsonErr('PIN ต้องมีอย่างน้อย 4 หลัก');
-  var current = getSetting('pin');
-  if (current) return jsonErr('PIN ถูกตั้งไว้แล้ว');
-  setSetting('pin', sha256(String(pin)));
-  // Return the api secret so frontend can store it
+  migrateMembersSheet();
+  var sheet = getOrCreateSheet(SH_MEMBERS, ['id','name','avatarColor','role','pin','createdAt']);
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][4]) return jsonErr('มี PIN อยู่แล้ว กรุณาเข้าสู่ระบบ');
+  }
+  var id = uuid();
+  var hashed = sha256(String(pin));
+  sheet.appendRow([id, 'Admin', '#1a3a6b', 'admin', hashed, new Date().toISOString()]);
   var secret = getSetting('apiSecret');
-  return jsonOk({ secret: secret });
+  return jsonOk({ secret: secret, member: { id: id, name: 'Admin', avatarColor: '#1a3a6b', role: 'admin' } });
 }
 
 function verifyPin(pin) {
   if (!pin) return jsonErr('กรุณาใส่ PIN');
+  var hashed = sha256(String(pin));
+  var sheet = getSpreadsheet().getSheetByName(SH_MEMBERS);
+  if (sheet) {
+    var data = sheet.getDataRange().getValues();
+    for (var i = 1; i < data.length; i++) {
+      if (data[i][4] === hashed) {
+        var secret = getSetting('apiSecret');
+        return jsonOk({
+          secret: secret,
+          member: {
+            id: data[i][0],
+            name: data[i][1],
+            avatarColor: data[i][2] || '#1a3a6b',
+            role: data[i][3] || 'member'
+          }
+        });
+      }
+    }
+  }
   var stored = getSetting('pin');
-  if (!stored) return jsonErr('ยังไม่ได้ตั้ง PIN');
-  if (sha256(String(pin)) !== stored) return jsonErr('PIN ไม่ถูกต้อง');
-  var secret = getSetting('apiSecret');
-  return jsonOk({ secret: secret });
+  if (stored && hashed === stored) {
+    var secret = getSetting('apiSecret');
+    return jsonOk({ secret: secret, member: null });
+  }
+  return jsonErr('PIN ไม่ถูกต้อง');
 }
 
 function changePin(oldPin, newPin) {
   if (!oldPin || !newPin) return jsonErr('กรุณาใส่ PIN เก่าและใหม่');
   if (newPin.length < 4) return jsonErr('PIN ใหม่ต้องมีอย่างน้อย 4 หลัก');
+  var hashedOld = sha256(String(oldPin));
+  var sheet = getSpreadsheet().getSheetByName(SH_MEMBERS);
+  if (sheet) {
+    var data = sheet.getDataRange().getValues();
+    for (var i = 1; i < data.length; i++) {
+      if (data[i][4] === hashedOld) {
+        sheet.getRange(i + 1, 5).setValue(sha256(String(newPin)));
+        return jsonOk('เปลี่ยน PIN สำเร็จ');
+      }
+    }
+  }
   var stored = getSetting('pin');
-  if (sha256(String(oldPin)) !== stored) return jsonErr('PIN เก่าไม่ถูกต้อง');
-  setSetting('pin', sha256(String(newPin)));
-  return jsonOk('เปลี่ยน PIN สำเร็จ');
+  if (stored && hashedOld === stored) {
+    setSetting('pin', sha256(String(newPin)));
+    return jsonOk('เปลี่ยน PIN สำเร็จ');
+  }
+  return jsonErr('PIN เก่าไม่ถูกต้อง');
 }
 
 // ══════════════════════════════════════
@@ -737,7 +820,8 @@ function getMembersApi() {
       name: r[1],
       avatarColor: r[2] || '#1a3a6b',
       role: r[3] || 'member',
-      createdAt: r[4]
+      hasPin: !!r[4],
+      createdAt: r[5]
     });
   }
   return jsonOk(members);
@@ -745,13 +829,15 @@ function getMembersApi() {
 
 function addMemberApi(p) {
   if (!p.name || !String(p.name).trim()) return jsonErr('กรุณาใส่ชื่อสมาชิก');
-  var sheet = getOrCreateSheet(SH_MEMBERS, ['id','name','avatarColor','role','createdAt']);
+  var sheet = getOrCreateSheet(SH_MEMBERS, ['id','name','avatarColor','role','pin','createdAt']);
   var id = uuid();
+  var hashedPin = p.pin ? sha256(String(p.pin)) : '';
   sheet.appendRow([
     id,
     String(p.name).trim(),
     p.avatarColor || '#1a3a6b',
     p.role || 'member',
+    hashedPin,
     new Date().toISOString()
   ]);
   return jsonOk({ id: id, name: String(p.name).trim(), avatarColor: p.avatarColor || '#1a3a6b', role: p.role || 'member' });
@@ -768,6 +854,7 @@ function updateMemberApi(p) {
       if (p.name !== undefined) sheet.getRange(row, 2).setValue(String(p.name).trim());
       if (p.avatarColor !== undefined) sheet.getRange(row, 3).setValue(p.avatarColor);
       if (p.role !== undefined) sheet.getRange(row, 4).setValue(p.role);
+      if (p.pin !== undefined && p.pin !== '') sheet.getRange(row, 5).setValue(sha256(String(p.pin)));
       return jsonOk('แก้ไขสำเร็จ');
     }
   }

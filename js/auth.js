@@ -358,6 +358,7 @@ const Auth = (() => {
         bindPinPad(async (pin) => {
           const res = await API.setInitialPin(pin);
           API.setSecret(res.secret);
+          if (res.member) { localStorage.setItem('bfm_login_member', JSON.stringify(res.member)); localStorage.setItem('bfm_current_member', res.member.id); }
           setAuthenticated(true);
           if (await isBiometricAvailable()) {
             const ok = await showBioPrompt(container);
@@ -379,6 +380,7 @@ const Auth = (() => {
             const storedPin = await authenticateBiometric();
             const res = await API.verifyPin(storedPin);
             API.setSecret(res.secret);
+            if (res.member) { localStorage.setItem('bfm_login_member', JSON.stringify(res.member)); localStorage.setItem('bfm_current_member', res.member.id); }
             setAuthenticated(true);
             onSuccess();
           } catch (e) {
@@ -400,6 +402,7 @@ const Auth = (() => {
         bindPinPad(async (pin) => {
           const res = await API.verifyPin(pin);
           API.setSecret(res.secret);
+          if (res.member) { localStorage.setItem('bfm_login_member', JSON.stringify(res.member)); localStorage.setItem('bfm_current_member', res.member.id); }
           setAuthenticated(true);
           if (bioAvail && !isBiometricRegistered()) {
             const ok = await showBioPrompt(container);
@@ -432,6 +435,7 @@ const Auth = (() => {
 
   function logout() {
     setAuthenticated(false);
+    localStorage.removeItem('bfm_login_member');
     location.reload();
   }
 
