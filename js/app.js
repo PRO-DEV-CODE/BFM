@@ -765,16 +765,19 @@ const App = (() => {
 
       // Swipe-to-action on each row
       container.querySelectorAll('.hist-txn-row').forEach(row => {
-        let startX = 0, currentX = 0, swiping = false, swiped = false;
+        let startX = 0, currentX = 0, swiping = false;
         row.addEventListener('touchstart', e => {
-          startX = e.touches[0].clientX; swiping = true; swiped = false;
+          // Don't handle swipe if tapping on action buttons
+          if (e.target.closest('.hist-row-actions')) { swiping = false; return; }
+          startX = e.touches[0].clientX; swiping = true;
         }, { passive: true });
         row.addEventListener('touchmove', e => {
           if (!swiping) return;
           currentX = e.touches[0].clientX - startX;
-          if (currentX < -30) { row.style.transform = `translateX(${Math.max(currentX, -120)}px)`; swiped = true; }
+          if (currentX < -30) { row.style.transform = `translateX(${Math.max(currentX, -120)}px)`; }
         }, { passive: true });
-        row.addEventListener('touchend', () => {
+        row.addEventListener('touchend', e => {
+          if (!swiping) return;
           swiping = false;
           if (currentX < -80) {
             row.style.transform = 'translateX(-120px)';
@@ -783,9 +786,8 @@ const App = (() => {
           currentX = 0;
         });
         row.addEventListener('click', (e) => {
-          // If row has swipe actions showing or was just swiped, don't navigate
-          if (swiped || row.querySelector('.hist-row-actions')) return;
           if (e.target.closest('.hist-row-actions')) return;
+          if (row.querySelector('.hist-row-actions')) { hideRowActions(row); row.style.transform = ''; return; }
           const txn = allTxns.find(t => t.id === row.dataset.id);
           if (txn) renderAddTransaction(document.getElementById('main-content'), txn);
         });
