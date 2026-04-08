@@ -426,6 +426,12 @@ function editTransaction(p) {
       if (p.category) sheet.getRange(row, 4).setValue(p.category);
       if (p.amount !== undefined) sheet.getRange(row, 5).setValue(Number(p.amount));
       if (p.description !== undefined) sheet.getRange(row, 6).setValue(p.description);
+      var type = p.type || data[i][2];
+      var icon = type === 'income' ? '💰' : '💸';
+      var label = type === 'income' ? 'รายรับ' : 'รายจ่าย';
+      sendLineNotify('✏️ แก้ไข' + label + '\n'
+        + '📂 ' + (p.category || data[i][3]) + '\n'
+        + '💵 ' + formatMoney(Number(p.amount !== undefined ? p.amount : data[i][4])) + ' บาท');
       return jsonOk('แก้ไขสำเร็จ');
     }
   }
@@ -437,7 +443,18 @@ function deleteTransaction(id) {
   var data = sheet.getDataRange().getValues();
   for (var i = 1; i < data.length; i++) {
     if (data[i][0] === id) {
+      var r = data[i];
+      var type = r[2];
+      var category = r[3];
+      var amount = Number(r[4]);
+      var desc = r[5] || '';
       sheet.deleteRow(i + 1);
+      var icon = type === 'income' ? '💰' : '💸';
+      var label = type === 'income' ? 'รายรับ' : 'รายจ่าย';
+      sendLineNotify('🗑️ ลบ' + label + '\n'
+        + '📂 ' + category + '\n'
+        + '💵 ' + formatMoney(amount) + ' บาท'
+        + (desc ? '\n📝 ' + desc : ''));
       return jsonOk('ลบสำเร็จ');
     }
   }
