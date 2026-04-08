@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bfm-v28';
+const CACHE_NAME = 'bfm-v29';
 
 // Detect base path dynamically
 const BASE = self.registration.scope;
