@@ -1032,9 +1032,8 @@ textarea.input-field { resize: vertical; }
 .reminder-card {
   background: var(--bg-white); border-radius: var(--radius);
   padding: 14px 16px; margin-bottom: 10px; box-shadow: var(--shadow);
-  border-left: 4px solid var(--warning);
 }
-.reminder-card.inactive { opacity: 0.5; border-left-color: var(--border); }
+.reminder-card.inactive { opacity: 0.5; }
 .reminder-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
 .reminder-name { font-weight: 600; font-size: 0.95rem; }
 .reminder-details { display: flex; flex-wrap: wrap; gap: 10px; font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 10px; }
@@ -1043,7 +1042,7 @@ textarea.input-field { resize: vertical; }
   display: flex; align-items: center; justify-content: space-between;
   background: var(--bg-white); border-radius: var(--radius-sm);
   padding: 12px 16px; margin-bottom: 8px;
-  border-left: 3px solid var(--warning); box-shadow: var(--shadow);
+  border-left: none; box-shadow: var(--shadow);
 }
 .reminder-item.urgent { border-left-color: var(--danger); background: #fff5f5; }
 .reminder-item.warning { border-left-color: var(--warning); }
