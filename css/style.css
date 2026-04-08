@@ -343,14 +343,14 @@ a { color: var(--accent); text-decoration: none; }
 /* Error / Toast */
 .error-msg { color: var(--danger); font-size: 0.85rem; margin-top: 0.75rem; text-align: center; }
 .toast {
-  position: fixed; bottom: calc(var(--nav-height) + 16px + var(--safe-bottom));
-  left: 50%; transform: translateX(-50%) translateY(20px);
+  position: fixed; top: 16px; right: 16px;
+  transform: translateY(-20px);
   background: var(--bg-white); color: var(--text);
-  padding: 12px 24px; border-radius: 24px;
+  padding: 12px 24px; border-radius: 12px;
   font-size: 0.85rem; z-index: 9999;
-  opacity: 0; transition: all 0.3s; box-shadow: var(--shadow-lg); white-space: nowrap;
+  opacity: 0; transition: all 0.3s; box-shadow: var(--shadow-lg); max-width: 90vw;
 }
-.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.show { opacity: 1; transform: translateY(0); }
 .toast-success { border-left: 4px solid var(--success); }
 .toast-error { border-left: 4px solid var(--danger); }
 
