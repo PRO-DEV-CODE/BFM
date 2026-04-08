@@ -757,22 +757,11 @@ const App = (() => {
                 <span class="hist-txn-meta">${t.category}${t.createdBy ? ' · ' + t.createdBy : ''} · ${formatDate(t.date)}</span>
               </div>
               <div class="hist-txn-amount ${t.type}">${t.type === 'income' ? '+' : '-'}฿${formatMoney(t.amount)}</div>
-              ${del ? `<button class="hist-del-btn" data-id="${t.id}" title="ลบ">${mi('delete', 'mi-sm')}</button>` : ''}
             </div>`;
           }).join('')}
         </div>`;
       }
       container.innerHTML = html;
-
-      // Direct delete buttons
-      container.querySelectorAll('.hist-del-btn').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-          e.stopPropagation();
-          if (!confirm('ลบรายการนี้?')) return;
-          try { await API.deleteTransaction(btn.dataset.id); showToast('ลบสำเร็จ'); loadTransactions(); }
-          catch (err) { showToast(err.message, 'error'); }
-        });
-      });
 
       // Swipe-to-action on each row
       container.querySelectorAll('.hist-txn-row').forEach(row => {
