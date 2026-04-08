@@ -94,6 +94,11 @@ function initSheets() {
   if (keys.indexOf('lineGroupId') === -1) {
     settingsSheet.appendRow(['lineGroupId', '']);
   }
+  // Seed LINE credentials if empty
+  var currentToken = getSetting('lineToken');
+  var currentGroupId = getSetting('lineGroupId');
+  if (!currentToken) setSetting('lineToken', 'DRz5joqy1uwKC3bwpVY1BtKXCraZcLWdllkD0NQ0e8e4WRSCZjhthZvQTy04n+OHN4so/kVSuP5rqfzKOCPUYi6JLAgaalaVVF2wPqpxWgiVOMC6PEJ7KfZhbHpKZ55cmgQ4UsrC56EzsFdziapeVAdB04t89/1O/w1cDnyilFU=');
+  if (!currentGroupId) setSetting('lineGroupId', 'C3bbd5fc111e8c87464a264ae08e670ba');
   if (keys.indexOf('categories_expense') === -1) {
     settingsSheet.appendRow(['categories_expense', DEFAULT_EXPENSE_CATS]);
   }
